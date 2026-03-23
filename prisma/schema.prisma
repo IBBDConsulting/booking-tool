@@ -194,6 +194,7 @@ enum BookingStage {
   BOOKED
   FIRST_CALL
   DEMO
+  DEAL
   POSTPONED
   NOT_QUALIFIED
 }

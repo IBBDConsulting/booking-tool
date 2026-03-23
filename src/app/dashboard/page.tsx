@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 
 type BookingStatus = "SCHEDULED" | "RESCHEDULED" | "CANCELLED" | "ATTENDED" | "NO_SHOW";
-type BookingStage = "BOOKED" | "FIRST_CALL" | "DEMO" | "POSTPONED" | "NOT_QUALIFIED";
+type BookingStage = "BOOKED" | "FIRST_CALL" | "DEMO" | "DEAL" | "POSTPONED" | "NOT_QUALIFIED";
 type BookingOutcome = "DEMO_SCHEDULED" | "FOLLOW_UP" | "NOT_QUALIFIED" | "CLOSED_WON" | "CLOSED_LOST";
 
 interface Agent {
@@ -64,6 +64,7 @@ const stageLabels: Record<BookingStage, string> = {
   BOOKED: "Gebucht",
   FIRST_CALL: "1st Call",
   DEMO: "Demo",
+  DEAL: "Deal",
   POSTPONED: "Verschoben",
   NOT_QUALIFIED: "Nicht qualifiziert",
 };
@@ -72,11 +73,12 @@ const stageColors: Record<BookingStage, string> = {
   BOOKED: "bg-blue-100 text-blue-700",
   FIRST_CALL: "bg-indigo-100 text-indigo-700",
   DEMO: "bg-purple-100 text-purple-700",
+  DEAL: "bg-green-100 text-green-700",
   POSTPONED: "bg-yellow-100 text-yellow-700",
   NOT_QUALIFIED: "bg-gray-100 text-gray-700",
 };
 
-const stageOrder: BookingStage[] = ["BOOKED", "FIRST_CALL", "DEMO", "POSTPONED", "NOT_QUALIFIED"];
+const stageOrder: BookingStage[] = ["BOOKED", "FIRST_CALL", "DEMO", "DEAL", "POSTPONED", "NOT_QUALIFIED"];
 
 function formatDateTime(startIso: string, duration: number): string {
   const start = new Date(startIso);
@@ -243,11 +245,12 @@ export default function DashboardPage() {
   // Conversion funnel
   const getFunnelData = (bookingList: Booking[]) => {
     const booked = bookingList.length;
-    const firstCall = bookingList.filter((b) => b.stage === "FIRST_CALL" || b.stage === "DEMO").length;
-    const demo = bookingList.filter((b) => b.stage === "DEMO").length;
+    const firstCall = bookingList.filter((b) => ["FIRST_CALL", "DEMO", "DEAL"].includes(b.stage)).length;
+    const demo = bookingList.filter((b) => ["DEMO", "DEAL"].includes(b.stage)).length;
+    const deal = bookingList.filter((b) => b.stage === "DEAL").length;
     const notQualified = bookingList.filter((b) => b.stage === "NOT_QUALIFIED").length;
     const postponed = bookingList.filter((b) => b.stage === "POSTPONED").length;
-    return { booked, firstCall, demo, notQualified, postponed };
+    return { booked, firstCall, demo, deal, notQualified, postponed };
   };
 
   return (
@@ -327,15 +330,16 @@ export default function DashboardPage() {
           const funnel = getFunnelData(filteredForConversion);
 
           // Agent conversion table
-          const agentMap = new Map<string, { name: string; booked: number; firstCall: number; demo: number }>();
+          const agentMap = new Map<string, { name: string; booked: number; firstCall: number; demo: number; deal: number }>();
           filteredForConversion.forEach((b) => {
             const key = b.agent?.name || "__none__";
             const label = b.agent?.name || "Kein Agent";
-            if (!agentMap.has(key)) agentMap.set(key, { name: label, booked: 0, firstCall: 0, demo: 0 });
+            if (!agentMap.has(key)) agentMap.set(key, { name: label, booked: 0, firstCall: 0, demo: 0, deal: 0 });
             const entry = agentMap.get(key)!;
             entry.booked++;
-            if (b.stage === "FIRST_CALL" || b.stage === "DEMO") entry.firstCall++;
-            if (b.stage === "DEMO") entry.demo++;
+            if (["FIRST_CALL", "DEMO", "DEAL"].includes(b.stage)) entry.firstCall++;
+            if (["DEMO", "DEAL"].includes(b.stage)) entry.demo++;
+            if (b.stage === "DEAL") entry.deal++;
           });
           const agents = Array.from(agentMap.values()).sort((a, b) => b.booked - a.booked);
 
@@ -392,20 +396,24 @@ export default function DashboardPage() {
                           <th className="pb-3 font-medium text-center">Gebucht</th>
                           <th className="pb-3 font-medium text-center">1st Call</th>
                           <th className="pb-3 font-medium text-center">Demo</th>
+                          <th className="pb-3 font-medium text-center">Deal</th>
                           <th className="pb-3 font-medium text-center">Gebucht → 1st Call</th>
                           <th className="pb-3 font-medium text-center">1st Call → Demo</th>
+                          <th className="pb-3 font-medium text-center">Demo → Deal</th>
                         </tr>
                       </thead>
                       <tbody>
                         {agents.map((a) => {
                           const pctFirstCall = a.booked > 0 ? Math.round((a.firstCall / a.booked) * 100) : 0;
                           const pctDemo = a.firstCall > 0 ? Math.round((a.demo / a.firstCall) * 100) : 0;
+                          const pctDeal = a.demo > 0 ? Math.round((a.deal / a.demo) * 100) : 0;
                           return (
                             <tr key={a.name} className="border-b border-gray-50">
                               <td className="py-3 font-medium text-gray-900">{a.name}</td>
                               <td className="py-3 text-center text-gray-700">{a.booked}</td>
                               <td className="py-3 text-center text-gray-700">{a.firstCall}</td>
                               <td className="py-3 text-center text-gray-700">{a.demo}</td>
+                              <td className="py-3 text-center text-gray-700">{a.deal}</td>
                               <td className="py-3 text-center">
                                 <span className={`font-semibold ${pctFirstCall >= 70 ? "text-green-600" : pctFirstCall >= 40 ? "text-yellow-600" : "text-red-600"}`}>
                                   {pctFirstCall}%
@@ -414,6 +422,11 @@ export default function DashboardPage() {
                               <td className="py-3 text-center">
                                 <span className={`font-semibold ${pctDemo >= 70 ? "text-green-600" : pctDemo >= 40 ? "text-yellow-600" : "text-red-600"}`}>
                                   {pctDemo}%
+                                </span>
+                              </td>
+                              <td className="py-3 text-center">
+                                <span className={`font-semibold ${pctDeal >= 70 ? "text-green-600" : pctDeal >= 40 ? "text-yellow-600" : "text-red-600"}`}>
+                                  {pctDeal}%
                                 </span>
                               </td>
                             </tr>
