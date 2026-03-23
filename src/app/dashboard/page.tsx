@@ -598,15 +598,6 @@ export default function DashboardPage() {
                             </button>
                           </>
                         )}
-                        {(booking.status === "NO_SHOW" || booking.status === "CANCELLED") && (
-                          <button
-                            onClick={() => updateBooking(booking.id, { status: "SCHEDULED" })}
-                            disabled={updatingId === booking.id}
-                            className="px-3 py-1.5 rounded-lg text-xs font-medium bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 transition disabled:opacity-50"
-                          >
-                            Zurücksetzen
-                          </button>
-                        )}
                         <button
                           onClick={() => deleteBooking(booking.id)}
                           disabled={updatingId === booking.id}
