@@ -57,11 +57,17 @@ export async function POST(request: Request) {
           referralCode: agentCode || null,
         },
       });
-    } else if (agentId && !lead.agentId) {
-      // Update existing lead with agent if not already assigned
+    } else {
+      // Update existing lead with latest data
       lead = await prisma.lead.update({
         where: { id: lead.id },
-        data: { agentId, referralCode: agentCode || null },
+        data: {
+          firstName: firstName || lead.firstName,
+          lastName: lastName || lead.lastName,
+          company: company || lead.company,
+          role: role || lead.role,
+          ...(agentId && !lead.agentId ? { agentId, referralCode: agentCode || null } : {}),
+        },
       });
     }
 
