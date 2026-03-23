@@ -217,7 +217,7 @@ export async function PATCH(request: Request) {
     }
 
     if (stage) {
-      const validStages = ["BOOKED", "FIRST_CALL", "DEMO", "POSTPONED", "NOT_QUALIFIED"];
+      const validStages = ["BOOKED", "FIRST_CALL", "DEMO", "DEAL", "POSTPONED", "NOT_QUALIFIED"];
       if (!validStages.includes(stage)) {
         return NextResponse.json(
           { success: false, error: "Ungültige Stage." },
