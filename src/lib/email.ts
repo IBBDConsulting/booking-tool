@@ -15,6 +15,7 @@ interface EmailLead {
   firstName: string;
   lastName: string;
   email: string;
+  company?: string | null;
 }
 
 function formatDateTimeDE(date: Date, timezone: string): string {
