@@ -1,0 +1,217 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model Organization {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  timezone  String   @default("America/New_York")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  members      OrgMember[]
+  bookingPages BookingPage[]
+  questions    Question[]
+}
+
+model OrgMember {
+  id    String       @id @default(cuid())
+  orgId String
+  org   Organization @relation(fields: [orgId], references: [id])
+
+  userId String
+  user   User @relation(fields: [userId], references: [id])
+  role   MemberRole @default(ADMIN)
+
+  googleAccessToken  String?
+  googleRefreshToken String?
+  googleCalendarId   String?
+  additionalCalendars String[] @default([])
+
+  workingHoursStart String @default("09:00")
+  workingHoursEnd   String @default("17:00")
+  workingDays       Int[]  @default([1, 2, 3, 4, 5])
+  breaks            Json?
+  bufferMinutes     Int    @default(15)
+  defaultDuration   Int    @default(30)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  bookings     Booking[]
+  bookingPages BookingPage[]
+
+  @@unique([orgId, userId])
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  image     String?
+  createdAt DateTime @default(now())
+
+  memberships OrgMember[]
+}
+
+enum MemberRole {
+  OWNER
+  ADMIN
+  VIEWER
+}
+
+model BookingPage {
+  id       String       @id @default(cuid())
+  orgId    String
+  org      Organization @relation(fields: [orgId], references: [id])
+  memberId String
+  member   OrgMember    @relation(fields: [memberId], references: [id])
+
+  title           String  @default("Book a Meeting")
+  slug            String  @unique
+  duration        Int     @default(30)
+  isActive        Boolean @default(true)
+  description     String?
+  calendarSubject String?
+  emailSubject    String?
+  formFields      Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  bookings Booking[]
+}
+
+model Question {
+  id         String       @id @default(cuid())
+  orgId      String
+  org        Organization @relation(fields: [orgId], references: [id])
+  label      String
+  type       QuestionType
+  options    String[]
+  isRequired Boolean      @default(false)
+  sortOrder  Int          @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  answers QuestionAnswer[]
+}
+
+enum QuestionType {
+  TEXT
+  SELECT
+  MULTI_SELECT
+  NUMBER
+  TEXTAREA
+}
+
+model Lead {
+  id        String  @id @default(cuid())
+  firstName String
+  lastName  String
+  email     String
+  company   String?
+  role      String?
+
+  agentId      String?
+  agent        Agent?  @relation(fields: [agentId], references: [id])
+  utmSource    String?
+  utmMedium    String?
+  utmCampaign  String?
+  referralCode String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  answers  QuestionAnswer[]
+  bookings Booking[]
+}
+
+model QuestionAnswer {
+  id         String   @id @default(cuid())
+  leadId     String
+  lead       Lead     @relation(fields: [leadId], references: [id])
+  questionId String
+  question   Question @relation(fields: [questionId], references: [id])
+  value      String
+
+  @@unique([leadId, questionId])
+}
+
+model Booking {
+  id            String      @id @default(cuid())
+  leadId        String
+  lead          Lead        @relation(fields: [leadId], references: [id])
+  memberId      String
+  member        OrgMember   @relation(fields: [memberId], references: [id])
+  bookingPageId String
+  bookingPage   BookingPage @relation(fields: [bookingPageId], references: [id])
+
+  startTime DateTime
+  endTime   DateTime
+  timezone  String
+  duration  Int
+
+  googleEventId String?
+  meetLink      String?
+
+  status  BookingStatus   @default(SCHEDULED)
+  stage   BookingStage    @default(BOOKED)
+  outcome BookingOutcome?
+  notes   String?
+
+  rescheduleToken String @unique @default(cuid())
+  cancelToken     String @unique @default(cuid())
+
+  confirmationSentAt DateTime?
+  reminder24hSentAt  DateTime?
+  reminder1hSentAt   DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum BookingStatus {
+  SCHEDULED
+  RESCHEDULED
+  CANCELLED
+  ATTENDED
+  NO_SHOW
+}
+
+enum BookingStage {
+  BOOKED
+  FIRST_CALL
+  DEMO
+  POSTPONED
+  NOT_QUALIFIED
+}
+
+enum BookingOutcome {
+  DEMO_SCHEDULED
+  FOLLOW_UP
+  NOT_QUALIFIED
+  CLOSED_WON
+  CLOSED_LOST
+}
+
+model Agent {
+  id           String  @id @default(cuid())
+  name         String
+  email        String  @unique
+  referralCode String  @unique
+  isActive     Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  leads Lead[]
+}

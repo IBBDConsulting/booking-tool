@@ -1,0 +1,7 @@
+<svg viewBox="0 0 280 50" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Angle brackets icon -->
+  <path d="M18 8L4 25L18 42" stroke="#2563eb" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M38 8L52 25L38 42" stroke="#2563eb" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- dealcode text -->
+  <text x="66" y="36" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="32" font-weight="700" fill="#2563eb">dealcode</text>
+</svg>
