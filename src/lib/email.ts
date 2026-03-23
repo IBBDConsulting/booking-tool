@@ -93,7 +93,8 @@ export async function sendBookingConfirmation(
     if (emailSubject) {
       subject = emailSubject
         .replace(/\{name\}/g, `${lead.firstName} ${lead.lastName}`)
-        .replace(/\{date\}/g, dateFormatted);
+        .replace(/\{date\}/g, dateFormatted)
+        .replace(/\{company\}/g, lead.company || "");
     }
 
     await resend.emails.send({
