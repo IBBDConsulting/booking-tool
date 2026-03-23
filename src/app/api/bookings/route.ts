@@ -66,32 +66,28 @@ export async function POST(request: Request) {
     }
 
     // Parse date and time into start/end timestamps with timezone
-    // The client sends date (YYYY-MM-DD) and time (HH:MM) in the user's timezone
-    // We need to create the correct UTC timestamp
+    // Client sends date (YYYY-MM-DD) and time (HH:MM) in the user's local timezone
+    // We also receive utcOffset (minutes) from the client for reliable conversion
     const tz = timezone || "Europe/Berlin";
-    const dateTimeStr = `${date}T${time}:00`;
+    const utcOffsetMinutes = body.utcOffset; // e.g. -60 for CET (UTC+1), -120 for CEST (UTC+2)
 
-    // Create date using timezone offset
-    // Use Intl to find the UTC offset for the given timezone and date
-    const tempDate = new Date(dateTimeStr + "Z"); // temp as UTC
-    const formatter = new Intl.DateTimeFormat("en-US", {
-      timeZone: tz,
-      year: "numeric", month: "2-digit", day: "2-digit",
-      hour: "2-digit", minute: "2-digit", second: "2-digit",
-      hour12: false,
-    });
-
-    // Calculate offset: format the UTC date in the target timezone and compare
-    const utcDate = new Date(`${date}T${time}:00Z`);
-    const parts = formatter.formatToParts(utcDate);
-    const tzParts: Record<string, string> = {};
-    parts.forEach(p => { if (p.type !== "literal") tzParts[p.type] = p.value; });
-    const tzDateStr = `${tzParts.year}-${tzParts.month}-${tzParts.day}T${tzParts.hour}:${tzParts.minute}:${tzParts.second}Z`;
-    const tzAsUtc = new Date(tzDateStr);
-    const offsetMs = tzAsUtc.getTime() - utcDate.getTime();
-
-    // startTime = the user's local time converted to UTC
-    const startTime = new Date(utcDate.getTime() - offsetMs);
+    let startTime: Date;
+    if (typeof utcOffsetMinutes === "number") {
+      // Use the offset sent by the client for reliable conversion
+      // JS getTimezoneOffset() returns negative for east of UTC
+      // e.g. CET = UTC+1, getTimezoneOffset() = -60
+      // So local 09:00 CET = 09:00 - (-60min) = 09:00 - 01:00 UTC = 08:00 UTC
+      const localMs = new Date(`${date}T${time}:00Z`).getTime();
+      startTime = new Date(localMs + utcOffsetMinutes * 60 * 1000);
+    } else {
+      // Fallback: assume Europe/Berlin (CET = UTC+1, CEST = UTC+2)
+      // Check if date falls in CEST (last Sunday March - last Sunday October)
+      const testDate = new Date(`${date}T12:00:00Z`);
+      const month = testDate.getUTCMonth(); // 0-11
+      const isCEST = month >= 2 && month <= 9; // March-October roughly
+      const offsetHours = isCEST ? 2 : 1;
+      startTime = new Date(`${date}T${time}:00+0${offsetHours}:00`);
+    }
     const endTime = new Date(startTime);
     endTime.setMinutes(endTime.getMinutes() + bookingPage.duration);
 
