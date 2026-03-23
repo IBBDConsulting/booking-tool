@@ -47,6 +47,8 @@ interface MemberSettings {
 const dayLabels: Record<number, string> = { 0: "So", 1: "Mo", 2: "Di", 3: "Mi", 4: "Do", 5: "Fr", 6: "Sa" };
 const allDays = [1, 2, 3, 4, 5, 6, 0]; // Mo-Sa, So
 
+const ADMIN_PASSWORD = "dealcode2026";
+
 export default function SettingsPage() {
   const [bookingPages, setBookingPages] = useState<BookingPageType[]>([]);
   const [member, setMember] = useState<MemberSettings | null>(null);
@@ -57,8 +59,19 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [memberForm, setMemberForm] = useState({ workingHoursStart: "09:00", workingHoursEnd: "17:00", bufferMinutes: "15", workingDays: [1,2,3,4,5] as number[], breaks: [] as BreakSlot[], additionalCalendars: "" });
+  const [authenticated, setAuthenticated] = useState(false);
 
   useEffect(() => {
+    const saved = localStorage.getItem("dashboard_auth");
+    if (saved === ADMIN_PASSWORD) {
+      setAuthenticated(true);
+    } else {
+      window.location.href = "/dashboard";
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!authenticated) return;
     fetch("/api/booking-pages").then(r => r.json()).then(d => { if (d.success) setBookingPages(d.bookingPages); });
     fetch("/api/member").then(r => r.json()).then(d => {
       if (d.success) {

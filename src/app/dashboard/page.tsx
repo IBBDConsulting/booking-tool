@@ -96,6 +96,8 @@ interface Member {
   googleCalendarConnected: boolean;
 }
 
+const ADMIN_PASSWORD = "dealcode2026";
+
 export default function DashboardPage() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
@@ -105,11 +107,57 @@ export default function DashboardPage() {
   const [conversionMonth, setConversionMonth] = useState<string>("all");
   const [editingNotesId, setEditingNotesId] = useState<string | null>(null);
   const [notesText, setNotesText] = useState<string>("");
+  const [authenticated, setAuthenticated] = useState(false);
+  const [passwordInput, setPasswordInput] = useState("");
+  const [passwordError, setPasswordError] = useState(false);
 
   useEffect(() => {
-    fetchBookings();
-    fetchMember();
+    const saved = localStorage.getItem("dashboard_auth");
+    if (saved === ADMIN_PASSWORD) {
+      setAuthenticated(true);
+    }
   }, []);
+
+  useEffect(() => {
+    if (authenticated) {
+      fetchBookings();
+      fetchMember();
+    }
+  }, [authenticated]);
+
+  const handleLogin = () => {
+    if (passwordInput === ADMIN_PASSWORD) {
+      localStorage.setItem("dashboard_auth", passwordInput);
+      setAuthenticated(true);
+      setPasswordError(false);
+    } else {
+      setPasswordError(true);
+    }
+  };
+
+  if (!authenticated) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="bg-white rounded-xl shadow-lg p-8 w-full max-w-sm">
+          <h1 className="text-xl font-bold text-gray-900 mb-2">Dashboard Login</h1>
+          <p className="text-sm text-gray-500 mb-6">Bitte Passwort eingeben</p>
+          <input
+            type="password"
+            value={passwordInput}
+            onChange={(e) => { setPasswordInput(e.target.value); setPasswordError(false); }}
+            onKeyDown={(e) => e.key === "Enter" && handleLogin()}
+            placeholder="Passwort"
+            className={`w-full px-3 py-2 border rounded-lg text-sm mb-3 ${passwordError ? "border-red-400" : "border-gray-300"}`}
+            autoFocus
+          />
+          {passwordError && <p className="text-red-500 text-xs mb-3">Falsches Passwort</p>}
+          <button onClick={handleLogin} className="w-full py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700">
+            Anmelden
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const fetchMember = async () => {
     try {
