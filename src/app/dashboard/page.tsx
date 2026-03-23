@@ -39,6 +39,7 @@ interface Booking {
   outcome: BookingOutcome | null;
   notes: string | null;
   lead: Lead;
+  agent: Agent | null;
   bookingPage: BookingPage;
   createdAt: string;
 }
@@ -204,6 +205,26 @@ export default function DashboardPage() {
     }
   };
 
+  const deleteBooking = async (bookingId: string) => {
+    if (!confirm("Meeting wirklich löschen?")) return;
+    setUpdatingId(bookingId);
+    try {
+      const res = await fetch("/api/bookings", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ bookingId }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setBookings((prev) => prev.filter((b) => b.id !== bookingId));
+      }
+    } catch (error) {
+      console.error("Fehler beim Löschen:", error);
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
   const saveNotes = async (bookingId: string) => {
     await updateBooking(bookingId, { notes: notesText });
     setEditingNotesId(null);
@@ -308,8 +329,8 @@ export default function DashboardPage() {
           // Agent conversion table
           const agentMap = new Map<string, { name: string; booked: number; firstCall: number; demo: number }>();
           filteredForConversion.forEach((b) => {
-            const key = b.lead.agent?.name || "__none__";
-            const label = b.lead.agent?.name || "Kein Agent";
+            const key = b.agent?.name || "__none__";
+            const label = b.agent?.name || "Kein Agent";
             if (!agentMap.has(key)) agentMap.set(key, { name: label, booked: 0, firstCall: 0, demo: 0 });
             const entry = agentMap.get(key)!;
             entry.booked++;
@@ -473,9 +494,9 @@ export default function DashboardPage() {
                         {formatDateTime(booking.startTime, booking.duration)}
                         <span className="text-gray-400 ml-2">· {booking.bookingPage?.title || `${booking.duration} Min`}</span>
                       </p>
-                      {booking.lead.agent && (
+                      {booking.agent && (
                         <span className="mt-1 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
-                          Agent: {booking.lead.agent.name}
+                          Agent: {booking.agent.name}
                         </span>
                       )}
 
@@ -586,6 +607,13 @@ export default function DashboardPage() {
                             Zurücksetzen
                           </button>
                         )}
+                        <button
+                          onClick={() => deleteBooking(booking.id)}
+                          disabled={updatingId === booking.id}
+                          className="px-3 py-1.5 rounded-lg text-xs font-medium bg-red-50 text-red-600 hover:bg-red-100 border border-red-200 transition disabled:opacity-50"
+                        >
+                          🗑 Löschen
+                        </button>
                       </div>
                     </div>
                   </div>

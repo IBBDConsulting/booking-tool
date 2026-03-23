@@ -250,3 +250,30 @@ export async function PATCH(request: Request) {
     );
   }
 }
+
+// DELETE /api/bookings — Delete a booking
+export async function DELETE(request: Request) {
+  try {
+    const body = await request.json();
+    const { bookingId } = body;
+
+    if (!bookingId) {
+      return NextResponse.json(
+        { success: false, error: "bookingId ist erforderlich." },
+        { status: 400 }
+      );
+    }
+
+    await prisma.booking.delete({
+      where: { id: bookingId },
+    });
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("Error deleting booking:", error);
+    return NextResponse.json(
+      { success: false, error: "Interner Serverfehler." },
+      { status: 500 }
+    );
+  }
+}
