@@ -96,7 +96,7 @@ interface Member {
   googleCalendarConnected: boolean;
 }
 
-const ADMIN_PASSWORD = "dealcode2026";
+const ADMIN_PASSWORD = "Salesbros2024!";
 
 export default function DashboardPage() {
   const [bookings, setBookings] = useState<Booking[]>([]);

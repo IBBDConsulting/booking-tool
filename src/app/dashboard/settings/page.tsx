@@ -47,7 +47,7 @@ interface MemberSettings {
 const dayLabels: Record<number, string> = { 0: "So", 1: "Mo", 2: "Di", 3: "Mi", 4: "Do", 5: "Fr", 6: "Sa" };
 const allDays = [1, 2, 3, 4, 5, 6, 0]; // Mo-Sa, So
 
-const ADMIN_PASSWORD = "dealcode2026";
+const ADMIN_PASSWORD = "Salesbros2024!";
 
 export default function SettingsPage() {
   const [bookingPages, setBookingPages] = useState<BookingPageType[]>([]);
