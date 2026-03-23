@@ -105,6 +105,7 @@ export default function DashboardPage() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<BookingStatus | "ALL">("ALL");
+  const [agentFilter, setAgentFilter] = useState<string>("ALL");
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [member, setMember] = useState<Member | null>(null);
   const [conversionMonth, setConversionMonth] = useState<string>("all");
@@ -232,8 +233,11 @@ export default function DashboardPage() {
     setEditingNotesId(null);
   };
 
-  const filteredBookings =
-    filter === "ALL" ? bookings : bookings.filter((b) => b.status === filter);
+  const filteredBookings = bookings.filter((b) => {
+    if (filter !== "ALL" && b.status !== filter) return false;
+    if (agentFilter !== "ALL" && b.agent?.name !== agentFilter) return false;
+    return true;
+  });
 
   // KPI counts
   const totalBookings = bookings.length;
@@ -410,7 +414,9 @@ export default function DashboardPage() {
                           return (
                             <tr key={a.name} className="border-b border-gray-50">
                               <td className="py-3 font-medium text-gray-900">{a.name}</td>
-                              <td className="py-3 text-center text-gray-700">{a.booked}</td>
+                              <td className="py-3 text-center">
+                                <button onClick={() => setAgentFilter(a.name)} className="text-blue-600 hover:underline font-medium">{a.booked}</button>
+                              </td>
                               <td className="py-3 text-center text-gray-700">{a.firstCall}</td>
                               <td className="py-3 text-center text-gray-700">{a.demo}</td>
                               <td className="py-3 text-center text-gray-700">{a.deal}</td>
@@ -465,6 +471,29 @@ export default function DashboardPage() {
                 }`}
               >
                 {statusLabels[s]} ({bookings.filter((b) => b.status === s).length})
+              </button>
+            ))}
+          </div>
+          {/* Agent Filter */}
+          <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-gray-100">
+            <span className="text-xs text-gray-400 self-center mr-1">Agent:</span>
+            <button
+              onClick={() => setAgentFilter("ALL")}
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${
+                agentFilter === "ALL" ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+              }`}
+            >
+              Alle
+            </button>
+            {Array.from(new Set(bookings.map((b) => b.agent?.name).filter(Boolean))).map((name) => (
+              <button
+                key={name}
+                onClick={() => setAgentFilter(name!)}
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${
+                  agentFilter === name ? "bg-orange-500 text-white" : "bg-orange-50 text-orange-700 hover:bg-orange-100"
+                }`}
+              >
+                {name} ({bookings.filter((b) => b.agent?.name === name).length})
               </button>
             ))}
           </div>
