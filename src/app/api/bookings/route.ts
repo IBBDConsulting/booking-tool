@@ -99,6 +99,8 @@ export async function POST(request: Request) {
         timezone: timezone || "Europe/Berlin",
         duration: bookingPage.duration,
         status: "SCHEDULED",
+        agentId: agentId || null,
+        referralCode: agentCode || null,
       },
     });
 
@@ -166,16 +168,9 @@ export async function GET(request: Request) {
     const bookings = await prisma.booking.findMany({
       where,
       include: {
-        lead: {
-          include: {
-            agent: true,
-          },
-        },
-        member: {
-          include: {
-            user: true,
-          },
-        },
+        lead: true,
+        agent: true,
+        member: true,
         bookingPage: true,
       },
       orderBy: { startTime: "desc" },
@@ -240,9 +235,8 @@ export async function PATCH(request: Request) {
       where: { id: bookingId },
       data: updateData,
       include: {
-        lead: {
-          include: { agent: true },
-        },
+        lead: true,
+        agent: true,
         bookingPage: true,
       },
     });

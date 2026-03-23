@@ -154,6 +154,9 @@ model Booking {
   member        OrgMember   @relation(fields: [memberId], references: [id])
   bookingPageId String
   bookingPage   BookingPage @relation(fields: [bookingPageId], references: [id])
+  agentId       String?
+  agent         Agent?      @relation(fields: [agentId], references: [id])
+  referralCode  String?
 
   startTime DateTime
   endTime   DateTime
@@ -213,5 +216,6 @@ model Agent {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  leads Lead[]
+  leads    Lead[]
+  bookings Booking[]
 }
