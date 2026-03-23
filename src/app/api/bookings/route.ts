@@ -65,9 +65,33 @@ export async function POST(request: Request) {
       });
     }
 
-    // Parse date and time into start/end timestamps
-    const [hours, minutes] = time.split(":").map(Number);
-    const startTime = new Date(`${date}T${time}:00`);
+    // Parse date and time into start/end timestamps with timezone
+    // The client sends date (YYYY-MM-DD) and time (HH:MM) in the user's timezone
+    // We need to create the correct UTC timestamp
+    const tz = timezone || "Europe/Berlin";
+    const dateTimeStr = `${date}T${time}:00`;
+
+    // Create date using timezone offset
+    // Use Intl to find the UTC offset for the given timezone and date
+    const tempDate = new Date(dateTimeStr + "Z"); // temp as UTC
+    const formatter = new Intl.DateTimeFormat("en-US", {
+      timeZone: tz,
+      year: "numeric", month: "2-digit", day: "2-digit",
+      hour: "2-digit", minute: "2-digit", second: "2-digit",
+      hour12: false,
+    });
+
+    // Calculate offset: format the UTC date in the target timezone and compare
+    const utcDate = new Date(`${date}T${time}:00Z`);
+    const parts = formatter.formatToParts(utcDate);
+    const tzParts: Record<string, string> = {};
+    parts.forEach(p => { if (p.type !== "literal") tzParts[p.type] = p.value; });
+    const tzDateStr = `${tzParts.year}-${tzParts.month}-${tzParts.day}T${tzParts.hour}:${tzParts.minute}:${tzParts.second}Z`;
+    const tzAsUtc = new Date(tzDateStr);
+    const offsetMs = tzAsUtc.getTime() - utcDate.getTime();
+
+    // startTime = the user's local time converted to UTC
+    const startTime = new Date(utcDate.getTime() - offsetMs);
     const endTime = new Date(startTime);
     endTime.setMinutes(endTime.getMinutes() + bookingPage.duration);
 
