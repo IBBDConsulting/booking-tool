@@ -6,7 +6,7 @@ import { sendBookingConfirmation } from "@/lib/email";
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { firstName, lastName, email, company, role, date, time, timezone, slug, agentCode } = body;
+    const { firstName, lastName, email, company, role, date, time, timezone, slug, agentCode, internalNotes } = body;
 
     // Validate required fields
     if (!firstName || !lastName || !email || !date || !time || !slug) {
@@ -120,6 +120,7 @@ export async function POST(request: Request) {
         status: "SCHEDULED",
         agentId: agentId || null,
         referralCode: agentCode || null,
+        notes: internalNotes || null,
       },
     });
 

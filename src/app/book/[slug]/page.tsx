@@ -152,6 +152,7 @@ export default function BookingPage({ params }: { params: { slug: string } }) {
           utcOffset: -new Date().getTimezoneOffset(),
           slug: selectedPage.slug,
           agentCode: agentCode || undefined,
+          internalNotes: formData.internalNotes || "",
         }),
       });
       const data = await response.json();
@@ -385,6 +386,18 @@ export default function BookingPage({ params }: { params: { slug: string } }) {
                         )}
                       </div>
                     ))}
+                    {/* Internal notes - only visible in dashboard */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Interne Notizen <span className="text-gray-400 font-normal">(nur für uns sichtbar)</span>
+                      </label>
+                      <textarea
+                        value={formData.internalNotes || ""}
+                        onChange={(e) => setFormData({ ...formData, internalNotes: e.target.value })}
+                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none min-h-[60px] resize-y"
+                        placeholder="z.B. Lead kommt über LinkedIn, interessiert an Feature X..."
+                      />
+                    </div>
                     <button type="submit" disabled={isSubmitting}
                       className={`w-full rounded-lg px-4 py-3 text-white font-semibold transition ${isSubmitting ? "bg-gray-300 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-700"}`}
                     >{isSubmitting ? "Wird gebucht..." : "Termin bestätigen"}</button>
