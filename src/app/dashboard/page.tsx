@@ -39,6 +39,8 @@ interface Booking {
   outcome: BookingOutcome | null;
   lossReason: string | null;
   notes: string | null;
+  memberId: string;
+  member: { id: string; googleCalendarId: string | null } | null;
   lead: Lead;
   agent: Agent | null;
   bookingPage: BookingPage;
@@ -116,6 +118,7 @@ export default function DashboardPage() {
   const [notesText, setNotesText] = useState<string>("");
   const [timePeriod, setTimePeriod] = useState<"week" | "month" | "quarter" | "year" | "all">("all");
   const [editingLossId, setEditingLossId] = useState<string | null>(null);
+  const [memberFilter, setMemberFilter] = useState<string>("ALL");
   const [authenticated, setAuthenticated] = useState(false);
   const [passwordInput, setPasswordInput] = useState("");
   const [passwordError, setPasswordError] = useState(false);
@@ -238,9 +241,22 @@ export default function DashboardPage() {
     setEditingNotesId(null);
   };
 
+  // Get unique members for filter
+  const memberNames = Array.from(new Set(bookings.map((b) => b.member?.googleCalendarId).filter(Boolean))) as string[];
+  const memberNameMap: Record<string, string> = {};
+  bookings.forEach((b) => {
+    if (b.member?.googleCalendarId) {
+      const email = b.member.googleCalendarId;
+      if (email === "df@dealcode.ai") memberNameMap[email] = "Dennis Fredrich";
+      else if (email === "nk@dealcode.ai") memberNameMap[email] = "Nico Koßler";
+      else memberNameMap[email] = email;
+    }
+  });
+
   const filteredBookings = bookings.filter((b) => {
     if (filter !== "ALL" && b.status !== filter) return false;
     if (agentFilter !== "ALL" && b.agent?.name !== agentFilter) return false;
+    if (memberFilter !== "ALL" && b.member?.googleCalendarId !== memberFilter) return false;
     return true;
   });
 
@@ -553,6 +569,31 @@ export default function DashboardPage() {
               </button>
             ))}
           </div>
+          {/* Member Filter */}
+          {memberNames.length > 1 && (
+            <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-gray-100">
+              <span className="text-xs text-gray-400 self-center mr-1">Kalender:</span>
+              <button
+                onClick={() => setMemberFilter("ALL")}
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${
+                  memberFilter === "ALL" ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                }`}
+              >
+                Alle
+              </button>
+              {memberNames.map((email) => (
+                <button
+                  key={email}
+                  onClick={() => setMemberFilter(email)}
+                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${
+                    memberFilter === email ? "bg-purple-600 text-white" : "bg-purple-50 text-purple-700 hover:bg-purple-100"
+                  }`}
+                >
+                  {memberNameMap[email] || email} ({bookings.filter((b) => b.member?.googleCalendarId === email).length})
+                </button>
+              ))}
+            </div>
+          )}
           {/* Agent Filter */}
           <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-gray-100">
             <span className="text-xs text-gray-400 self-center mr-1">Agent:</span>
@@ -633,11 +674,18 @@ export default function DashboardPage() {
                       <p className="text-xs text-gray-400 mt-0.5">
                         Gebucht am {new Date(booking.createdAt).toLocaleDateString("de-DE", { weekday: "long", day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" })} Uhr
                       </p>
-                      {booking.agent && (
-                        <span className="mt-1 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
-                          Agent: {booking.agent.name}
-                        </span>
-                      )}
+                      <div className="flex flex-wrap gap-1.5 mt-1">
+                        {booking.agent && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                            Agent: {booking.agent.name}
+                          </span>
+                        )}
+                        {booking.member?.googleCalendarId && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                            Kalender: {memberNameMap[booking.member.googleCalendarId] || booking.member.googleCalendarId}
+                          </span>
+                        )}
+                      </div>
 
                       {/* Notes */}
                       <div className="mt-2">
