@@ -120,6 +120,8 @@ export default function DashboardPage() {
   const [editingLossId, setEditingLossId] = useState<string | null>(null);
   const [memberFilter, setMemberFilter] = useState<string>("ALL");
   const [modalType, setModalType] = useState<"noshow" | "attended" | "cancelled" | null>(null);
+  const [outcomeFlow, setOutcomeFlow] = useState<{ bookingId: string; step: "outcome" | "reason" | "deal"; outcome?: "sale" | "nosale" } | null>(null);
+  const [dealValue, setDealValue] = useState("");
   const [authenticated, setAuthenticated] = useState(false);
   const [passwordInput, setPasswordInput] = useState("");
   const [passwordError, setPasswordError] = useState(false);
@@ -443,6 +445,62 @@ export default function DashboardPage() {
           </div>
         </div>
           );
+        })()}
+
+        {/* Calls Created Chart */}
+        {(() => {
+          const [chartView, setChartViewState] = [timePeriod, setTimePeriod]; // reuse timePeriod
+
+          // Group bookings by period
+          const getBuckets = () => {
+            const buckets: Record<string, number> = {};
+            filteredByPeriod.forEach((b) => {
+              const d = new Date(b.createdAt);
+              let key: string;
+              if (timePeriod === "week" || timePeriod === "month") {
+                // Group by week
+                const weekStart = new Date(d);
+                weekStart.setDate(weekStart.getDate() - weekStart.getDay() + 1);
+                key = `KW ${Math.ceil((weekStart.getDate()) / 7 + 1)} ${weekStart.toLocaleDateString("de-DE", { month: "short" })}`;
+              } else if (timePeriod === "quarter" || timePeriod === "year") {
+                // Group by month
+                key = d.toLocaleDateString("de-DE", { month: "short", year: "2-digit" });
+              } else {
+                // Group by month for all
+                key = d.toLocaleDateString("de-DE", { month: "short", year: "2-digit" });
+              }
+              buckets[key] = (buckets[key] || 0) + 1;
+            });
+            return buckets;
+          };
+
+          const buckets = getBuckets();
+          const entries = Object.entries(buckets);
+          const maxVal = Math.max(...Object.values(buckets), 1);
+
+          return entries.length > 0 ? (
+            <div className="bg-white rounded-xl shadow-sm p-6 mb-8">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h2 className="text-lg font-semibold text-gray-900">📞 Calls Created</h2>
+                  <p className="text-sm text-gray-500">Gebuchte Termine im Zeitverlauf</p>
+                </div>
+                <span className="text-2xl font-bold text-blue-600">{filteredByPeriod.length}</span>
+              </div>
+              <div className="flex items-end gap-2" style={{ height: "200px" }}>
+                {entries.map(([label, count]) => (
+                  <div key={label} className="flex-1 flex flex-col items-center justify-end h-full">
+                    <span className="text-xs font-bold text-gray-700 mb-1">{count}</span>
+                    <div
+                      className="w-full bg-blue-500 rounded-t-md hover:bg-blue-600 transition min-h-[4px]"
+                      style={{ height: `${Math.max((count / maxVal) * 170, 4)}px` }}
+                    />
+                    <span className="text-[10px] text-gray-500 mt-1 text-center leading-tight">{label}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null;
         })()}
 
         {/* Conversion Funnel */}
@@ -876,47 +934,43 @@ export default function DashboardPage() {
                         </div>
                       )}
 
-                      {/* Status Actions */}
+                      {/* Status Actions + Outcome Flow */}
                       <div className="flex flex-wrap gap-2">
                         {booking.status === "SCHEDULED" && (
                           <>
-                            <button
-                              onClick={() => updateBooking(booking.id, { status: "ATTENDED" })}
+                            <button onClick={() => { updateBooking(booking.id, { status: "ATTENDED" }); setOutcomeFlow({ bookingId: booking.id, step: "outcome" }); }}
                               disabled={updatingId === booking.id}
-                              className="px-3 py-1.5 rounded-lg text-xs font-medium bg-green-50 text-green-700 hover:bg-green-100 border border-green-200 transition disabled:opacity-50"
-                            >
+                              className="px-3 py-1.5 rounded-lg text-xs font-medium bg-green-50 text-green-700 hover:bg-green-100 border border-green-200 transition disabled:opacity-50">
                               Teilgenommen
                             </button>
-                            <button
-                              onClick={() => updateBooking(booking.id, { status: "NO_SHOW" })}
+                            <button onClick={() => updateBooking(booking.id, { status: "NO_SHOW" })}
                               disabled={updatingId === booking.id}
-                              className="px-3 py-1.5 rounded-lg text-xs font-medium bg-gray-50 text-gray-700 hover:bg-gray-100 border border-gray-200 transition disabled:opacity-50"
-                            >
+                              className="px-3 py-1.5 rounded-lg text-xs font-medium bg-gray-50 text-gray-700 hover:bg-gray-100 border border-gray-200 transition disabled:opacity-50">
                               No Show
                             </button>
-                            <button
-                              onClick={() => updateBooking(booking.id, { status: "CANCELLED" })}
+                            <button onClick={() => updateBooking(booking.id, { status: "CANCELLED" })}
                               disabled={updatingId === booking.id}
-                              className="px-3 py-1.5 rounded-lg text-xs font-medium bg-red-50 text-red-700 hover:bg-red-100 border border-red-200 transition disabled:opacity-50"
-                            >
+                              className="px-3 py-1.5 rounded-lg text-xs font-medium bg-red-50 text-red-700 hover:bg-red-100 border border-red-200 transition disabled:opacity-50">
                               Stornieren
                             </button>
                           </>
                         )}
+                        {(booking.status === "ATTENDED" && !outcomeFlow?.bookingId) && (
+                          <button onClick={() => setOutcomeFlow({ bookingId: booking.id, step: "outcome" })}
+                            className="px-3 py-1.5 rounded-lg text-xs font-medium bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 transition">
+                            + Add Outcome
+                          </button>
+                        )}
                         {(booking.status === "ATTENDED" || booking.status === "NO_SHOW" || booking.status === "CANCELLED") && (
-                          <button
-                            onClick={() => updateBooking(booking.id, { status: "SCHEDULED" })}
+                          <button onClick={() => updateBooking(booking.id, { status: "SCHEDULED" })}
                             disabled={updatingId === booking.id}
-                            className="px-3 py-1.5 rounded-lg text-xs font-medium bg-yellow-50 text-yellow-700 hover:bg-yellow-100 border border-yellow-200 transition disabled:opacity-50"
-                          >
+                            className="px-3 py-1.5 rounded-lg text-xs font-medium bg-yellow-50 text-yellow-700 hover:bg-yellow-100 border border-yellow-200 transition disabled:opacity-50">
                             ↩ Zurücksetzen
                           </button>
                         )}
-                        <button
-                          onClick={() => deleteBooking(booking.id)}
+                        <button onClick={() => deleteBooking(booking.id)}
                           disabled={updatingId === booking.id}
-                          className="px-3 py-1.5 rounded-lg text-xs font-medium bg-red-50 text-red-600 hover:bg-red-100 border border-red-200 transition disabled:opacity-50"
-                        >
+                          className="px-3 py-1.5 rounded-lg text-xs font-medium bg-red-50 text-red-600 hover:bg-red-100 border border-red-200 transition disabled:opacity-50">
                           🗑 Löschen
                         </button>
                       </div>
@@ -932,6 +986,139 @@ export default function DashboardPage() {
           })()}
         </div>
       </div>
+
+      {/* Outcome Flow Modal */}
+      {outcomeFlow && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setOutcomeFlow(null)}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden" onClick={(e) => e.stopPropagation()}>
+            {/* Steps indicator */}
+            <div className="flex items-center justify-center gap-2 p-4 border-b border-gray-100">
+              {[
+                { key: "outcome", label: "Outcome" },
+                { key: "reason", label: outcomeFlow.outcome === "sale" ? "Objections" : "Reason" },
+                { key: "deal", label: outcomeFlow.outcome === "sale" ? "Add Deal" : "Notizen" },
+              ].map((s, i) => (
+                <div key={s.key} className="flex items-center gap-2">
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+                    outcomeFlow.step === s.key ? "bg-blue-600 text-white" : "bg-gray-200 text-gray-500"
+                  }`}>{i + 1}</div>
+                  <span className={`text-xs font-medium ${outcomeFlow.step === s.key ? "text-gray-900" : "text-gray-400"}`}>{s.label}</span>
+                  {i < 2 && <div className="w-8 h-px bg-gray-300" />}
+                </div>
+              ))}
+            </div>
+
+            <div className="p-6">
+              {/* Step 1: Sale or No Sale */}
+              {outcomeFlow.step === "outcome" && (
+                <div>
+                  <h3 className="text-center font-semibold text-gray-900 mb-4">Select outcome of the call</h3>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button onClick={() => { updateBooking(outcomeFlow.bookingId, { stage: "DEAL" }); setOutcomeFlow({ ...outcomeFlow, step: "reason", outcome: "sale" }); }}
+                      className="p-4 rounded-xl border-2 border-green-200 hover:border-green-400 hover:bg-green-50 transition text-center">
+                      <div className="text-2xl mb-1">✅</div>
+                      <span className="font-semibold text-green-700">Sale</span>
+                    </button>
+                    <button onClick={() => { updateBooking(outcomeFlow.bookingId, { stage: "NOT_QUALIFIED" }); setOutcomeFlow({ ...outcomeFlow, step: "reason", outcome: "nosale" }); }}
+                      className="p-4 rounded-xl border-2 border-red-200 hover:border-red-400 hover:bg-red-50 transition text-center">
+                      <div className="text-2xl mb-1">❌</div>
+                      <span className="font-semibold text-red-700">No Sale</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Step 2: Reasons */}
+              {outcomeFlow.step === "reason" && outcomeFlow.outcome === "nosale" && (
+                <div>
+                  <h3 className="text-center font-semibold text-gray-900 mb-4">Grund für No Sale</h3>
+                  <div className="grid grid-cols-2 gap-2">
+                    {[
+                      { label: "Follow Up", desc: "Nochmal kontaktieren", icon: "🔄" },
+                      { label: "Nicht qualifiziert", desc: "Kein Fit", icon: "🚫" },
+                      { label: "No Show", desc: "Nicht erschienen", icon: "👻" },
+                      { label: "Abgesagt", desc: "Kunde hat abgesagt", icon: "📵" },
+                      { label: "Zu teuer", desc: "Budget passt nicht", icon: "💰" },
+                      { label: "Nicht interessiert", desc: "Kein Interesse", icon: "😐" },
+                    ].map((r) => (
+                      <button key={r.label} onClick={() => { updateBooking(outcomeFlow.bookingId, { lossReason: r.label }); setOutcomeFlow({ ...outcomeFlow, step: "deal" }); }}
+                        className="p-3 rounded-lg border border-gray-200 hover:border-red-300 hover:bg-red-50 transition text-left">
+                        <span className="text-lg">{r.icon}</span>
+                        <p className="font-medium text-sm text-gray-900 mt-1">{r.label}</p>
+                        <p className="text-xs text-gray-500">{r.desc}</p>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {outcomeFlow.step === "reason" && outcomeFlow.outcome === "sale" && (
+                <div>
+                  <h3 className="text-center font-semibold text-gray-900 mb-4">Welche Einwände überwunden?</h3>
+                  <div className="grid grid-cols-2 gap-2">
+                    {[
+                      { label: "Preis", desc: "Budget-Bedenken", icon: "💰" },
+                      { label: "Timing", desc: "Zeitlich ungünstig", icon: "⏰" },
+                      { label: "Entscheider", desc: "Muss Partner fragen", icon: "👥" },
+                      { label: "Vertrauen", desc: "Unsicher ob es hilft", icon: "🤔" },
+                      { label: "Keine", desc: "Keine Einwände", icon: "✅" },
+                    ].map((r) => (
+                      <button key={r.label} onClick={() => { updateBooking(outcomeFlow.bookingId, { notes: `Einwand: ${r.label}` }); setOutcomeFlow({ ...outcomeFlow, step: "deal" }); }}
+                        className="p-3 rounded-lg border border-gray-200 hover:border-green-300 hover:bg-green-50 transition text-left">
+                        <span className="text-lg">{r.icon}</span>
+                        <p className="font-medium text-sm text-gray-900 mt-1">{r.label}</p>
+                        <p className="text-xs text-gray-500">{r.desc}</p>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Step 3: Deal / Notes */}
+              {outcomeFlow.step === "deal" && outcomeFlow.outcome === "sale" && (
+                <div>
+                  <h3 className="text-center font-semibold text-gray-900 mb-4">Deal Details</h3>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Deal Value (€)</label>
+                      <input type="number" value={dealValue} onChange={(e) => setDealValue(e.target.value)}
+                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" placeholder="z.B. 5000" />
+                    </div>
+                    <div className="flex gap-2">
+                      <button onClick={() => { if (dealValue) updateBooking(outcomeFlow.bookingId, { notes: `Deal: €${dealValue}` }); setOutcomeFlow(null); setDealValue(""); fetchBookings(); }}
+                        className="flex-1 px-4 py-2 rounded-lg bg-green-600 text-white text-sm font-medium hover:bg-green-700 transition">
+                        Deal speichern
+                      </button>
+                      <button onClick={() => { setOutcomeFlow(null); setDealValue(""); }}
+                        className="px-4 py-2 rounded-lg border border-gray-300 text-sm font-medium text-gray-700 hover:bg-gray-50 transition">
+                        Überspringen
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {outcomeFlow.step === "deal" && outcomeFlow.outcome === "nosale" && (
+                <div>
+                  <h3 className="text-center font-semibold text-gray-900 mb-4">Zusätzliche Notizen</h3>
+                  <textarea value={notesText} onChange={(e) => setNotesText(e.target.value)}
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm min-h-[80px]" placeholder="Optionale Notizen..." />
+                  <div className="flex gap-2 mt-3">
+                    <button onClick={() => { if (notesText) updateBooking(outcomeFlow.bookingId, { notes: notesText }); setOutcomeFlow(null); setNotesText(""); fetchBookings(); }}
+                      className="flex-1 px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition">
+                      Speichern
+                    </button>
+                    <button onClick={() => { setOutcomeFlow(null); setNotesText(""); }}
+                      className="px-4 py-2 rounded-lg border border-gray-300 text-sm font-medium text-gray-700 hover:bg-gray-50 transition">
+                      Fertig
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Detail Modal */}
       {modalType && (() => {
