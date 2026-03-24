@@ -340,12 +340,15 @@ export default function DashboardPage() {
         </div>
 
         {/* KPI Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
+        {(() => {
+          const showUpRate = (attended + noShow) > 0 ? Math.round((attended / (attended + noShow)) * 100) : 0;
+          const noShowRate = (attended + noShow) > 0 ? Math.round((noShow / (attended + noShow)) * 100) : 0;
+          return (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
           {[
-            { label: "Gesamt", value: totalBookings, color: "bg-blue-500" },
+            { label: "Calls gebucht", value: totalBookings, color: "bg-blue-500" },
             { label: "Geplant", value: scheduled, color: "bg-indigo-500" },
             { label: "Teilgenommen", value: attended, color: "bg-green-500" },
-            { label: "Nicht erschienen", value: noShow, color: "bg-gray-500" },
             { label: "Storniert", value: cancelled, color: "bg-red-500" },
           ].map((kpi) => (
             <div key={kpi.label} className="bg-white rounded-xl shadow-sm p-4">
@@ -355,6 +358,103 @@ export default function DashboardPage() {
             </div>
           ))}
         </div>
+          );
+        })()}
+
+        {/* Show-Up & No-Show Stats */}
+        {(() => {
+          const decidedBookings = filteredByPeriod.filter((b) => b.status === "ATTENDED" || b.status === "NO_SHOW");
+          const showUpRate = decidedBookings.length > 0 ? Math.round((attended / decidedBookings.length) * 100) : 0;
+          const noShowRate = decidedBookings.length > 0 ? Math.round((noShow / decidedBookings.length) * 100) : 0;
+
+          // No-Show by agent
+          const noShowByAgent: Record<string, { total: number; noShow: number }> = {};
+          filteredByPeriod.forEach((b) => {
+            if (b.status !== "ATTENDED" && b.status !== "NO_SHOW") return;
+            const name = b.agent?.name || "Kein Agent";
+            if (!noShowByAgent[name]) noShowByAgent[name] = { total: 0, noShow: 0 };
+            noShowByAgent[name].total++;
+            if (b.status === "NO_SHOW") noShowByAgent[name].noShow++;
+          });
+
+          // Loss reasons breakdown
+          const lossReasons: Record<string, number> = {};
+          filteredByPeriod.forEach((b) => {
+            if (b.lossReason) {
+              lossReasons[b.lossReason] = (lossReasons[b.lossReason] || 0) + 1;
+            }
+          });
+          const totalLoss = Object.values(lossReasons).reduce((a, b) => a + b, 0);
+
+          return (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+          {/* Show-Up Rate */}
+          <div className="bg-white rounded-xl shadow-sm p-5">
+            <h3 className="text-sm font-semibold text-gray-500 mb-3">Show-Up Rate</h3>
+            <div className="flex items-end gap-3">
+              <span className={`text-3xl font-bold ${showUpRate >= 80 ? "text-green-600" : showUpRate >= 60 ? "text-yellow-600" : "text-red-600"}`}>{showUpRate}%</span>
+              <span className="text-sm text-gray-400 mb-1">{attended} von {decidedBookings.length}</span>
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-2 mt-3">
+              <div className="bg-green-500 h-2 rounded-full transition-all" style={{ width: `${showUpRate}%` }} />
+            </div>
+          </div>
+
+          {/* No-Show Rate */}
+          <div className="bg-white rounded-xl shadow-sm p-5">
+            <h3 className="text-sm font-semibold text-gray-500 mb-3">No-Show Rate</h3>
+            <div className="flex items-end gap-3">
+              <span className={`text-3xl font-bold ${noShowRate <= 10 ? "text-green-600" : noShowRate <= 25 ? "text-yellow-600" : "text-red-600"}`}>{noShowRate}%</span>
+              <span className="text-sm text-gray-400 mb-1">{noShow} von {decidedBookings.length}</span>
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-2 mt-3">
+              <div className="bg-red-500 h-2 rounded-full transition-all" style={{ width: `${noShowRate}%` }} />
+            </div>
+            {/* No-Show by agent */}
+            {Object.keys(noShowByAgent).length > 0 && (
+              <div className="mt-3 pt-3 border-t border-gray-100 space-y-1">
+                {Object.entries(noShowByAgent).sort((a, b) => (b[1].noShow / b[1].total) - (a[1].noShow / a[1].total)).map(([name, data]) => {
+                  const rate = Math.round((data.noShow / data.total) * 100);
+                  return (
+                    <div key={name} className="flex items-center justify-between text-xs">
+                      <span className="text-gray-600">{name}</span>
+                      <span className={`font-semibold ${rate <= 10 ? "text-green-600" : rate <= 25 ? "text-yellow-600" : "text-red-600"}`}>
+                        {data.noShow}/{data.total} ({rate}%)
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Loss Reasons */}
+          <div className="bg-white rounded-xl shadow-sm p-5">
+            <h3 className="text-sm font-semibold text-gray-500 mb-3">Ablehnungsgründe</h3>
+            {totalLoss === 0 ? (
+              <p className="text-sm text-gray-400">Keine Daten</p>
+            ) : (
+              <div className="space-y-2">
+                {Object.entries(lossReasons).sort((a, b) => b[1] - a[1]).map(([reason, count]) => {
+                  const pct = Math.round((count / totalLoss) * 100);
+                  return (
+                    <div key={reason}>
+                      <div className="flex items-center justify-between text-xs mb-1">
+                        <span className="text-gray-700 font-medium">{reason}</span>
+                        <span className="text-gray-500">{count} ({pct}%)</span>
+                      </div>
+                      <div className="w-full bg-gray-100 rounded-full h-1.5">
+                        <div className="bg-red-400 h-1.5 rounded-full" style={{ width: `${pct}%` }} />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+          );
+        })()}
 
         {/* Conversion Funnel */}
         {(() => {
