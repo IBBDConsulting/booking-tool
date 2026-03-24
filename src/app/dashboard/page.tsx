@@ -654,6 +654,9 @@ export default function DashboardPage() {
                       <div className="flex items-center gap-2 mb-1 flex-wrap">
                         <h3 className="font-semibold text-gray-900">
                           {booking.lead.firstName} {booking.lead.lastName}
+                          {booking.lead.company && (
+                            <span className="text-blue-600 ml-1">– {booking.lead.company}</span>
+                          )}
                         </h3>
                         <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusColors[booking.status]}`}>
                           {statusLabels[booking.status]}

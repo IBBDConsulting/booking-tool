@@ -148,7 +148,6 @@ export async function createCalendarEvent(
       },
       attendees: [
         { email: lead.email },
-        { email: "df@dealcode.ai", organizer: true },
       ],
       conferenceData: {
         createRequest: {
