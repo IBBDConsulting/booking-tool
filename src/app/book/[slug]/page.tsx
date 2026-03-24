@@ -119,13 +119,15 @@ export default function BookingPage({ params }: { params: { slug: string } }) {
   const fetchAvailability = useCallback(async (date: Date) => {
     if (!selectedPage) return;
     setLoadingSlots(true);
+    setAvailableSlots([]); // Clear old slots while loading
     try {
-      const dateStr = date.toISOString().split("T")[0];
+      // Use local date parts to avoid UTC date shift
+      const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
       const res = await fetch(`/api/availability?slug=${selectedPage.slug}&date=${dateStr}`);
       const data = await res.json();
-      setAvailableSlots(data.success ? data.slots : getTimeSlots());
+      setAvailableSlots(data.success ? data.slots : []);
     } catch {
-      setAvailableSlots(getTimeSlots());
+      setAvailableSlots([]); // Show no slots on error, not all slots
     } finally {
       setLoadingSlots(false);
     }
