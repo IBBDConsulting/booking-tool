@@ -388,6 +388,55 @@ export default function DashboardPage() {
                 ))}
               </div>
 
+              {/* Wochentag-Analyse */}
+              {bookings.length > 0 && (() => {
+                const dayNames = ["Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag"];
+                const dayStats: { [key: number]: { booked: number; firstCall: number; demo: number; deal: number } } = {};
+                for (let i = 0; i < 7; i++) dayStats[i] = { booked: 0, firstCall: 0, demo: 0, deal: 0 };
+
+                bookings.forEach((b) => {
+                  const day = new Date(b.createdAt).getDay();
+                  dayStats[day].booked++;
+                  if (b.stage === "FIRST_CALL" || b.stage === "DEMO" || b.stage === "DEAL") dayStats[day].firstCall++;
+                  if (b.stage === "DEMO" || b.stage === "DEAL") dayStats[day].demo++;
+                  if (b.stage === "DEAL") dayStats[day].deal++;
+                });
+
+                const maxBooked = Math.max(...Object.values(dayStats).map(d => d.booked), 1);
+                // Only show work days (Mon-Fri)
+                const workDays = [1, 2, 3, 4, 5];
+
+                return (
+                  <>
+                    <h3 className="text-sm font-semibold text-gray-700 mb-3">Beste Tage für Cold Calling</h3>
+                    <div className="grid grid-cols-5 gap-2 mb-6">
+                      {workDays.map((d) => {
+                        const stats = dayStats[d];
+                        const pct = maxBooked > 0 ? Math.round((stats.booked / maxBooked) * 100) : 0;
+                        const convRate = stats.booked > 0 ? Math.round((stats.firstCall / stats.booked) * 100) : 0;
+                        const isBest = stats.booked === maxBooked && stats.booked > 0;
+                        return (
+                          <div key={d} className={`rounded-lg p-3 text-center ${isBest ? "bg-green-50 ring-2 ring-green-500" : "bg-gray-50"}`}>
+                            <div className={`text-xs font-semibold mb-1 ${isBest ? "text-green-700" : "text-gray-500"}`}>
+                              {dayNames[d].slice(0, 2)}
+                              {isBest && " 🏆"}
+                            </div>
+                            <div className="text-lg font-bold text-gray-900">{stats.booked}</div>
+                            <div className="text-[10px] text-gray-400 mb-2">Buchungen</div>
+                            <div className="w-full bg-gray-200 rounded-full h-1.5 mb-1">
+                              <div className={`h-1.5 rounded-full ${isBest ? "bg-green-500" : "bg-blue-400"}`} style={{ width: `${pct}%` }} />
+                            </div>
+                            <div className="text-[10px] text-gray-500">
+                              Conv: <span className={`font-semibold ${convRate >= 70 ? "text-green-600" : convRate >= 40 ? "text-yellow-600" : "text-red-600"}`}>{convRate}%</span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </>
+                );
+              })()}
+
               {/* Agent conversion table */}
               {agents.length > 0 && (
                 <>
