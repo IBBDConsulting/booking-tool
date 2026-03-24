@@ -394,8 +394,8 @@ export default function DashboardPage() {
           return (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
           {/* Show-Up Rate */}
-          <div className="bg-white rounded-xl shadow-sm p-5">
-            <h3 className="text-sm font-semibold text-gray-500 mb-3">Show-Up Rate</h3>
+          <div className="bg-white rounded-xl shadow-sm p-5 cursor-pointer hover:ring-2 hover:ring-green-300 transition" onClick={() => attended > 0 && setModalType("attended")}>
+            <h3 className="text-sm font-semibold text-gray-500 mb-3">Show-Up Rate {attended > 0 && <span className="text-green-500">→</span>}</h3>
             <div className="flex items-end gap-3">
               <span className={`text-3xl font-bold ${showUpRate >= 80 ? "text-green-600" : showUpRate >= 60 ? "text-yellow-600" : "text-red-600"}`}>{showUpRate}%</span>
               <span className="text-sm text-gray-400 mb-1">{attended} von {decidedBookings.length}</span>
@@ -403,34 +403,11 @@ export default function DashboardPage() {
             <div className="w-full bg-gray-200 rounded-full h-2 mt-3">
               <div className="bg-green-500 h-2 rounded-full transition-all" style={{ width: `${showUpRate}%` }} />
             </div>
-            {/* Show-Up by agent */}
-            {Object.keys(noShowByAgent).length > 0 && (
-              <div className="mt-3 pt-3 border-t border-gray-100 space-y-2">
-                <p className="text-xs font-semibold text-gray-500">Pro Agent:</p>
-                {Object.entries(noShowByAgent).sort((a, b) => ((b[1].total - b[1].noShow) / b[1].total) - ((a[1].total - a[1].noShow) / a[1].total)).map(([name, data]) => {
-                  const showUp = data.total - data.noShow;
-                  const rate = Math.round((showUp / data.total) * 100);
-                  return (
-                    <div key={name}>
-                      <div className="flex items-center justify-between text-xs mb-0.5">
-                        <span className="text-gray-600">{name}</span>
-                        <span className={`font-semibold ${rate >= 80 ? "text-green-600" : rate >= 60 ? "text-yellow-600" : "text-red-600"}`}>
-                          {showUp}/{data.total} ({rate}%)
-                        </span>
-                      </div>
-                      <div className="w-full bg-gray-100 rounded-full h-1">
-                        <div className="bg-green-400 h-1 rounded-full" style={{ width: `${rate}%` }} />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
           </div>
 
           {/* No-Show Rate */}
-          <div className="bg-white rounded-xl shadow-sm p-5">
-            <h3 className="text-sm font-semibold text-gray-500 mb-3">No-Show Rate</h3>
+          <div className="bg-white rounded-xl shadow-sm p-5 cursor-pointer hover:ring-2 hover:ring-red-300 transition" onClick={() => noShow > 0 && setModalType("noshow")}>
+            <h3 className="text-sm font-semibold text-gray-500 mb-3">No-Show Rate {noShow > 0 && <span className="text-red-500">→</span>}</h3>
             <div className="flex items-end gap-3">
               <span className={`text-3xl font-bold ${noShowRate <= 10 ? "text-green-600" : noShowRate <= 25 ? "text-yellow-600" : "text-red-600"}`}>{noShowRate}%</span>
               <span className="text-sm text-gray-400 mb-1">{noShow} von {decidedBookings.length}</span>
@@ -438,28 +415,6 @@ export default function DashboardPage() {
             <div className="w-full bg-gray-200 rounded-full h-2 mt-3">
               <div className="bg-red-500 h-2 rounded-full transition-all" style={{ width: `${noShowRate}%` }} />
             </div>
-            {/* No-Show by agent */}
-            {Object.keys(noShowByAgent).length > 0 && (
-              <div className="mt-3 pt-3 border-t border-gray-100 space-y-2">
-                <p className="text-xs font-semibold text-gray-500">Pro Agent:</p>
-                {Object.entries(noShowByAgent).sort((a, b) => (b[1].noShow / b[1].total) - (a[1].noShow / a[1].total)).map(([name, data]) => {
-                  const rate = Math.round((data.noShow / data.total) * 100);
-                  return (
-                    <div key={name}>
-                      <div className="flex items-center justify-between text-xs mb-0.5">
-                        <span className="text-gray-600">{name}</span>
-                        <span className={`font-semibold ${rate <= 10 ? "text-green-600" : rate <= 25 ? "text-yellow-600" : "text-red-600"}`}>
-                          {data.noShow}/{data.total} ({rate}%)
-                        </span>
-                      </div>
-                      <div className="w-full bg-gray-100 rounded-full h-1">
-                        <div className="bg-red-400 h-1 rounded-full" style={{ width: `${rate}%` }} />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
           </div>
 
           {/* Loss Reasons */}
@@ -983,6 +938,17 @@ export default function DashboardPage() {
         const statusFilter = modalType === "noshow" ? "NO_SHOW" : modalType === "attended" ? "ATTENDED" : "CANCELLED";
         const modalTitle = modalType === "noshow" ? "No-Show Buchungen" : modalType === "attended" ? "Teilgenommen" : "Stornierte Buchungen";
         const modalBookings = filteredByPeriod.filter((b) => b.status === statusFilter);
+
+        // Agent breakdown for modal
+        const agentBreakdown: Record<string, { total: number; count: number }> = {};
+        filteredByPeriod.forEach((b) => {
+          if (b.status !== "ATTENDED" && b.status !== "NO_SHOW") return;
+          const name = b.agent?.name || "Kein Agent";
+          if (!agentBreakdown[name]) agentBreakdown[name] = { total: 0, count: 0 };
+          agentBreakdown[name].total++;
+          if (b.status === statusFilter) agentBreakdown[name].count++;
+        });
+
         return (
           <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setModalType(null)}>
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[80vh] overflow-hidden" onClick={(e) => e.stopPropagation()}>
@@ -990,7 +956,36 @@ export default function DashboardPage() {
                 <h2 className="text-lg font-bold text-gray-900">{modalTitle} ({modalBookings.length})</h2>
                 <button onClick={() => setModalType(null)} className="text-gray-400 hover:text-gray-600 text-xl">✕</button>
               </div>
-              <div className="overflow-y-auto max-h-[65vh] divide-y divide-gray-100">
+
+              {/* Agent breakdown */}
+              {Object.keys(agentBreakdown).length > 0 && (
+                <div className="p-4 border-b border-gray-200 bg-gray-50">
+                  <p className="text-xs font-semibold text-gray-500 mb-2">Pro Agent:</p>
+                  <div className="space-y-2">
+                    {Object.entries(agentBreakdown).sort((a, b) => (b[1].count / b[1].total) - (a[1].count / a[1].total)).map(([name, data]) => {
+                      const rate = Math.round((data.count / data.total) * 100);
+                      const isGood = modalType === "attended" ? rate >= 80 : rate <= 10;
+                      const isMid = modalType === "attended" ? rate >= 60 : rate <= 25;
+                      const barColor = modalType === "attended" ? "bg-green-400" : "bg-red-400";
+                      return (
+                        <div key={name}>
+                          <div className="flex items-center justify-between text-xs mb-0.5">
+                            <span className="text-gray-700 font-medium">{name}</span>
+                            <span className={`font-semibold ${isGood ? "text-green-600" : isMid ? "text-yellow-600" : "text-red-600"}`}>
+                              {data.count}/{data.total} ({rate}%)
+                            </span>
+                          </div>
+                          <div className="w-full bg-gray-200 rounded-full h-1.5">
+                            <div className={`${barColor} h-1.5 rounded-full`} style={{ width: `${rate}%` }} />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              <div className="overflow-y-auto max-h-[55vh] divide-y divide-gray-100">
                 {modalBookings.length === 0 ? (
                   <div className="p-8 text-center text-gray-400">Keine Einträge</div>
                 ) : modalBookings.map((b) => (
