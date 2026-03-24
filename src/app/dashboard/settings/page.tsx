@@ -72,7 +72,7 @@ export default function SettingsPage() {
 
   useEffect(() => {
     if (!authenticated) return;
-    fetch("/api/booking-pages").then(r => r.json()).then(d => { if (d.success) setBookingPages(d.bookingPages); });
+    fetch("/api/booking-pages").then(r => r.json()).then(d => { if (d.success) setBookingPages(d.bookingPages || []); }).catch(e => console.error("[Settings] fetch error:", e));
     fetch("/api/member").then(r => r.json()).then(d => {
       if (d.success) {
         setMember(d.member);
@@ -86,7 +86,7 @@ export default function SettingsPage() {
         });
       }
     });
-  }, []);
+  }, [authenticated]);
 
   const startEdit = (page: BookingPageType) => {
     setEditingId(page.id);
