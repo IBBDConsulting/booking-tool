@@ -119,6 +119,7 @@ export default function DashboardPage() {
   const [timePeriod, setTimePeriod] = useState<"week" | "month" | "quarter" | "year" | "all">("all");
   const [editingLossId, setEditingLossId] = useState<string | null>(null);
   const [memberFilter, setMemberFilter] = useState<string>("ALL");
+  const [modalType, setModalType] = useState<"noshow" | "attended" | "cancelled" | null>(null);
   const [authenticated, setAuthenticated] = useState(false);
   const [passwordInput, setPasswordInput] = useState("");
   const [passwordError, setPasswordError] = useState(false);
@@ -344,17 +345,21 @@ export default function DashboardPage() {
           const showUpRate = (attended + noShow) > 0 ? Math.round((attended / (attended + noShow)) * 100) : 0;
           const noShowRate = (attended + noShow) > 0 ? Math.round((noShow / (attended + noShow)) * 100) : 0;
           return (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-4">
           {[
-            { label: "Calls gebucht", value: totalBookings, color: "bg-blue-500" },
-            { label: "Geplant", value: scheduled, color: "bg-indigo-500" },
-            { label: "Teilgenommen", value: attended, color: "bg-green-500" },
-            { label: "Storniert", value: cancelled, color: "bg-red-500" },
+            { label: "Calls gebucht", value: totalBookings, color: "bg-blue-500", click: null },
+            { label: "Geplant", value: scheduled, color: "bg-indigo-500", click: null },
+            { label: "Teilgenommen", value: attended, color: "bg-green-500", click: "attended" as const },
+            { label: "No Show", value: noShow, color: "bg-gray-500", click: "noshow" as const },
+            { label: "Storniert", value: cancelled, color: "bg-red-500", click: "cancelled" as const },
           ].map((kpi) => (
-            <div key={kpi.label} className="bg-white rounded-xl shadow-sm p-4">
+            <div key={kpi.label}
+              onClick={() => kpi.click && kpi.value > 0 && setModalType(kpi.click)}
+              className={`bg-white rounded-xl shadow-sm p-4 ${kpi.click && kpi.value > 0 ? "cursor-pointer hover:ring-2 hover:ring-blue-300 transition" : ""}`}
+            >
               <div className={`w-2 h-2 rounded-full ${kpi.color} mb-2`} />
               <p className="text-2xl font-bold text-gray-900">{kpi.value}</p>
-              <p className="text-sm text-gray-500">{kpi.label}</p>
+              <p className="text-sm text-gray-500">{kpi.label} {kpi.click && kpi.value > 0 && <span className="text-blue-500">→</span>}</p>
             </div>
           ))}
         </div>
@@ -972,6 +977,59 @@ export default function DashboardPage() {
           })()}
         </div>
       </div>
+
+      {/* Detail Modal */}
+      {modalType && (() => {
+        const statusFilter = modalType === "noshow" ? "NO_SHOW" : modalType === "attended" ? "ATTENDED" : "CANCELLED";
+        const modalTitle = modalType === "noshow" ? "No-Show Buchungen" : modalType === "attended" ? "Teilgenommen" : "Stornierte Buchungen";
+        const modalBookings = filteredByPeriod.filter((b) => b.status === statusFilter);
+        return (
+          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setModalType(null)}>
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[80vh] overflow-hidden" onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-center justify-between p-5 border-b border-gray-200">
+                <h2 className="text-lg font-bold text-gray-900">{modalTitle} ({modalBookings.length})</h2>
+                <button onClick={() => setModalType(null)} className="text-gray-400 hover:text-gray-600 text-xl">✕</button>
+              </div>
+              <div className="overflow-y-auto max-h-[65vh] divide-y divide-gray-100">
+                {modalBookings.length === 0 ? (
+                  <div className="p-8 text-center text-gray-400">Keine Einträge</div>
+                ) : modalBookings.map((b) => (
+                  <div key={b.id} className="p-4 hover:bg-gray-50">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <p className="font-semibold text-gray-900">
+                          {b.lead.firstName} {b.lead.lastName}
+                          {b.lead.company && <span className="text-blue-600 ml-1">– {b.lead.company}</span>}
+                        </p>
+                        <p className="text-sm text-gray-500">{b.lead.email}{b.lead.role ? ` · ${b.lead.role}` : ""}</p>
+                        <p className="text-sm text-gray-600 mt-1">
+                          {new Date(b.startTime).toLocaleDateString("de-DE", { weekday: "short", day: "numeric", month: "short" })}
+                          {" "}
+                          {new Date(b.startTime).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })} Uhr
+                          <span className="text-gray-400 ml-1">· {b.duration} Min</span>
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        {b.agent && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                            {b.agent.name}
+                          </span>
+                        )}
+                        {b.lossReason && (
+                          <p className="text-xs text-red-600 mt-1">Grund: {b.lossReason}</p>
+                        )}
+                        {b.notes && (
+                          <p className="text-xs text-gray-500 mt-1">📝 {b.notes}</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </main>
   );
 }
