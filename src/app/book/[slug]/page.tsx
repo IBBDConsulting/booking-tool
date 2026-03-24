@@ -33,7 +33,8 @@ const defaultFormFields: FormField[] = [
 function getAvailableDates(workingDays: number[] = [1,2,3,4,5]): Date[] {
   const dates: Date[] = [];
   const today = new Date();
-  for (let i = 0; i <= 30 && dates.length < 14; i++) {
+  // Start from tomorrow (i=1), today is always blocked
+  for (let i = 1; i <= 30 && dates.length < 14; i++) {
     const date = new Date(today);
     date.setDate(today.getDate() + i);
     const day = date.getDay();
@@ -267,7 +268,7 @@ export default function BookingPage({ params }: { params: { slug: string } }) {
                           if (!day) return <div key={`empty-${i}`} className="aspect-square" />;
                           const available = isDateAvailable(day);
                           const isSelected = selectedDate?.toDateString() === day.toDateString();
-                          const isPast = day < today;
+                          const isPast = day <= today; // today is also blocked
                           const isToday = day.toDateString() === today.toDateString();
                           return (
                             <div key={day.toISOString()} className="aspect-square flex items-center justify-center p-0.5">

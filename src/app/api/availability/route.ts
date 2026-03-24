@@ -79,9 +79,18 @@ export async function GET(request: Request) {
       currentMinutes += 30;
     }
 
-    // Get existing bookings for this member on this date
-    const dayStart = new Date(`${date}T00:00:00`);
-    const dayEnd = new Date(`${date}T23:59:59`);
+    // Use Europe/Berlin timezone for correct UTC conversion
+    // CET = UTC+1, CEST = UTC+2 (last Sunday March - last Sunday October)
+    const testMonth = new Date(`${date}T12:00:00Z`).getUTCMonth();
+    const isCEST = testMonth >= 2 && testMonth <= 9; // rough CEST check
+    const tzOffsetHours = isCEST ? 2 : 1;
+    const tzOffsetStr = `+0${tzOffsetHours}:00`;
+
+    // Day boundaries in correct timezone
+    const dayStart = new Date(`${date}T00:00:00${tzOffsetStr}`);
+    const dayEnd = new Date(`${date}T23:59:59${tzOffsetStr}`);
+
+    console.log(`[Availability] Date: ${date}, TZ offset: ${tzOffsetStr}, dayStart UTC: ${dayStart.toISOString()}, dayEnd UTC: ${dayEnd.toISOString()}`);
 
     const existingBookings = await prisma.booking.findMany({
       where: {
@@ -96,22 +105,20 @@ export async function GET(request: Request) {
     let googleBusySlots: BusySlot[] = [];
     try {
       googleBusySlots = await getFreeBusySlots(member, dayStart, dayEnd);
+      console.log(`[Availability] Google busy slots: ${googleBusySlots.length}`, googleBusySlots.map(b => `${b.start.toISOString()} - ${b.end.toISOString()}`));
     } catch (error) {
       console.error("Google FreeBusy Fehler:", error);
     }
 
     // Filter out slots that conflict with existing bookings OR Google Calendar events
     const availableSlots = slots.filter((slot) => {
-      const [h, m] = slot.split(":").map(Number);
-      const slotStart = new Date(`${date}T${slot}:00`);
-      const slotEnd = new Date(slotStart);
-      slotEnd.setMinutes(slotEnd.getMinutes() + duration);
+      // Create slot times in the correct timezone
+      const slotStart = new Date(`${date}T${slot}:00${tzOffsetStr}`);
+      const slotEnd = new Date(slotStart.getTime() + duration * 60 * 1000);
 
       // Check buffer time too
-      const slotStartWithBuffer = new Date(slotStart);
-      slotStartWithBuffer.setMinutes(slotStartWithBuffer.getMinutes() - buffer);
-      const slotEndWithBuffer = new Date(slotEnd);
-      slotEndWithBuffer.setMinutes(slotEndWithBuffer.getMinutes() + buffer);
+      const slotStartWithBuffer = new Date(slotStart.getTime() - buffer * 60 * 1000);
+      const slotEndWithBuffer = new Date(slotEnd.getTime() + buffer * 60 * 1000);
 
       // Check against database bookings
       const dbConflict = existingBookings.some((booking) => {
