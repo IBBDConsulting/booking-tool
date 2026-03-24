@@ -37,12 +37,15 @@ interface Booking {
   status: BookingStatus;
   stage: BookingStage;
   outcome: BookingOutcome | null;
+  lossReason: string | null;
   notes: string | null;
   lead: Lead;
   agent: Agent | null;
   bookingPage: BookingPage;
   createdAt: string;
 }
+
+const LOSS_REASONS = ["Zu teuer", "Falscher Zeitpunkt", "Nicht interessant", "No Show", "Sonstiges"];
 
 const statusLabels: Record<BookingStatus, string> = {
   SCHEDULED: "Geplant",
@@ -111,6 +114,8 @@ export default function DashboardPage() {
   const [conversionMonth, setConversionMonth] = useState<string>("all");
   const [editingNotesId, setEditingNotesId] = useState<string | null>(null);
   const [notesText, setNotesText] = useState<string>("");
+  const [timePeriod, setTimePeriod] = useState<"week" | "month" | "quarter" | "year" | "all">("all");
+  const [editingLossId, setEditingLossId] = useState<string | null>(null);
   const [authenticated, setAuthenticated] = useState(false);
   const [passwordInput, setPasswordInput] = useState("");
   const [passwordError, setPasswordError] = useState(false);
@@ -187,7 +192,7 @@ export default function DashboardPage() {
     }
   };
 
-  const updateBooking = async (bookingId: string, updates: { status?: BookingStatus; stage?: BookingStage; outcome?: BookingOutcome; notes?: string }) => {
+  const updateBooking = async (bookingId: string, updates: { status?: BookingStatus; stage?: BookingStage; outcome?: BookingOutcome; notes?: string; lossReason?: string }) => {
     setUpdatingId(bookingId);
     try {
       const res = await fetch("/api/bookings", {
@@ -239,12 +244,28 @@ export default function DashboardPage() {
     return true;
   });
 
-  // KPI counts
-  const totalBookings = bookings.length;
-  const attended = bookings.filter((b) => b.status === "ATTENDED").length;
-  const noShow = bookings.filter((b) => b.status === "NO_SHOW").length;
-  const scheduled = bookings.filter((b) => b.status === "SCHEDULED").length;
-  const cancelled = bookings.filter((b) => b.status === "CANCELLED").length;
+  // Filter bookings by time period
+  const getTimePeriodStart = (): Date | null => {
+    const now = new Date();
+    switch (timePeriod) {
+      case "week": { const d = new Date(now); d.setDate(d.getDate() - 7); return d; }
+      case "month": { const d = new Date(now); d.setMonth(d.getMonth() - 1); return d; }
+      case "quarter": { const d = new Date(now); d.setMonth(d.getMonth() - 3); return d; }
+      case "year": { const d = new Date(now); d.setFullYear(d.getFullYear() - 1); return d; }
+      default: return null;
+    }
+  };
+  const periodStart = getTimePeriodStart();
+  const filteredByPeriod = periodStart
+    ? bookings.filter((b) => new Date(b.createdAt) >= periodStart)
+    : bookings;
+
+  // KPI counts (based on time period)
+  const totalBookings = filteredByPeriod.length;
+  const attended = filteredByPeriod.filter((b) => b.status === "ATTENDED").length;
+  const noShow = filteredByPeriod.filter((b) => b.status === "NO_SHOW").length;
+  const scheduled = filteredByPeriod.filter((b) => b.status === "SCHEDULED").length;
+  const cancelled = filteredByPeriod.filter((b) => b.status === "CANCELLED").length;
 
   // Conversion funnel
   const getFunnelData = (bookingList: Booking[]) => {
@@ -291,6 +312,15 @@ export default function DashboardPage() {
             </div>
           )}
           </div>
+        </div>
+
+        {/* Time Period Filter */}
+        <div className="flex gap-2 mb-4">
+          {([["week", "Woche"], ["month", "Monat"], ["quarter", "Quartal"], ["year", "Jahr"], ["all", "Gesamt"]] as const).map(([key, label]) => (
+            <button key={key} onClick={() => setTimePeriod(key)}
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${timePeriod === key ? "bg-blue-600 text-white" : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50"}`}
+            >{label}</button>
+          ))}
         </div>
 
         {/* KPI Cards */}
@@ -389,12 +419,12 @@ export default function DashboardPage() {
               </div>
 
               {/* Wochentag-Analyse */}
-              {bookings.length > 0 && (() => {
+              {filteredByPeriod.length > 0 && (() => {
                 const dayNames = ["Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag"];
                 const dayStats: { [key: number]: { booked: number; firstCall: number; demo: number; deal: number } } = {};
                 for (let i = 0; i < 7; i++) dayStats[i] = { booked: 0, firstCall: 0, demo: 0, deal: 0 };
 
-                bookings.forEach((b) => {
+                filteredByPeriod.forEach((b) => {
                   const day = new Date(b.createdAt).getDay();
                   dayStats[day].booked++;
                   if (b.stage === "FIRST_CALL" || b.stage === "DEMO" || b.stage === "DEAL") dayStats[day].firstCall++;
@@ -648,12 +678,19 @@ export default function DashboardPage() {
                           return (
                             <button
                               key={s}
-                              onClick={() => updateBooking(booking.id, { stage: s })}
+                              onClick={() => {
+                                if (s === "NOT_QUALIFIED") {
+                                  setEditingLossId(editingLossId === booking.id ? null : booking.id);
+                                }
+                                updateBooking(booking.id, { stage: s });
+                              }}
                               disabled={updatingId === booking.id}
                               title={stageLabels[s]}
                               className={`px-2.5 py-1 rounded text-xs font-medium transition border ${
                                 isActive
-                                  ? "bg-blue-600 text-white border-blue-600"
+                                  ? s === "NOT_QUALIFIED" ? "bg-red-600 text-white border-red-600"
+                                  : s === "POSTPONED" ? "bg-yellow-500 text-white border-yellow-500"
+                                  : "bg-blue-600 text-white border-blue-600"
                                   : isPassed
                                   ? "bg-blue-100 text-blue-700 border-blue-200"
                                   : "bg-gray-50 text-gray-400 border-gray-200 hover:bg-gray-100"
@@ -664,6 +701,25 @@ export default function DashboardPage() {
                           );
                         })}
                       </div>
+                      {/* Loss Reason Dropdown */}
+                      {(booking.stage === "NOT_QUALIFIED" || booking.status === "NO_SHOW") && (
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="text-xs text-gray-500">Grund:</span>
+                          <select
+                            value={booking.lossReason || ""}
+                            onChange={(e) => updateBooking(booking.id, { lossReason: e.target.value })}
+                            className="text-xs border border-gray-200 rounded px-2 py-1 bg-white"
+                          >
+                            <option value="">Grund wählen...</option>
+                            {LOSS_REASONS.map((r) => (
+                              <option key={r} value={r}>{r}</option>
+                            ))}
+                          </select>
+                          {booking.lossReason && (
+                            <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">{booking.lossReason}</span>
+                          )}
+                        </div>
+                      )}
 
                       {/* Status Actions */}
                       <div className="flex flex-wrap gap-2">

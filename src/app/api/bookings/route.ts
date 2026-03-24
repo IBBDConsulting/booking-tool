@@ -245,7 +245,7 @@ export async function GET(request: Request) {
 export async function PATCH(request: Request) {
   try {
     const body = await request.json();
-    const { bookingId, status, outcome, stage, notes } = body;
+    const { bookingId, status, outcome, stage, notes, lossReason } = body;
 
     if (!bookingId) {
       return NextResponse.json(
@@ -284,6 +284,10 @@ export async function PATCH(request: Request) {
 
     if (notes !== undefined) {
       updateData.notes = notes;
+    }
+
+    if (lossReason !== undefined) {
+      updateData.lossReason = lossReason;
     }
 
     const booking = await prisma.booking.update({

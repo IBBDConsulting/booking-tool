@@ -166,10 +166,11 @@ model Booking {
   googleEventId String?
   meetLink      String?
 
-  status  BookingStatus   @default(SCHEDULED)
-  stage   BookingStage    @default(BOOKED)
-  outcome BookingOutcome?
-  notes   String?
+  status     BookingStatus   @default(SCHEDULED)
+  stage      BookingStage    @default(BOOKED)
+  outcome    BookingOutcome?
+  lossReason String?
+  notes      String?
 
   rescheduleToken String @unique @default(cuid())
   cancelToken     String @unique @default(cuid())
