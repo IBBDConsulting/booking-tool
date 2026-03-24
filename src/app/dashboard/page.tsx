@@ -122,6 +122,7 @@ export default function DashboardPage() {
   const [modalType, setModalType] = useState<"noshow" | "attended" | "cancelled" | null>(null);
   const [outcomeFlow, setOutcomeFlow] = useState<{ bookingId: string; step: "outcome" | "reason" | "deal"; outcome?: "sale" | "nosale" } | null>(null);
   const [dealValue, setDealValue] = useState("");
+  const [chartGroupBy, setChartGroupBy] = useState<"day" | "week" | "month" | "year">("week");
   const [authenticated, setAuthenticated] = useState(false);
   const [passwordInput, setPasswordInput] = useState("");
   const [passwordError, setPasswordError] = useState(false);
@@ -449,58 +450,80 @@ export default function DashboardPage() {
 
         {/* Calls Created Chart */}
         {(() => {
-          const [chartView, setChartViewState] = [timePeriod, setTimePeriod]; // reuse timePeriod
-
-          // Group bookings by period
-          const getBuckets = () => {
-            const buckets: Record<string, number> = {};
-            filteredByPeriod.forEach((b) => {
-              const d = new Date(b.createdAt);
-              let key: string;
-              if (timePeriod === "week" || timePeriod === "month") {
-                // Group by week
-                const weekStart = new Date(d);
-                weekStart.setDate(weekStart.getDate() - weekStart.getDay() + 1);
-                key = `KW ${Math.ceil((weekStart.getDate()) / 7 + 1)} ${weekStart.toLocaleDateString("de-DE", { month: "short" })}`;
-              } else if (timePeriod === "quarter" || timePeriod === "year") {
-                // Group by month
-                key = d.toLocaleDateString("de-DE", { month: "short", year: "2-digit" });
-              } else {
-                // Group by month for all
-                key = d.toLocaleDateString("de-DE", { month: "short", year: "2-digit" });
+          // Group bookings by selected granularity
+          const buckets: Record<string, number> = {};
+          const sortKeys: Record<string, string> = {};
+          filteredByPeriod.forEach((b) => {
+            const d = new Date(b.createdAt);
+            let key: string;
+            let sortKey: string;
+            switch (chartGroupBy) {
+              case "day":
+                key = d.toLocaleDateString("de-DE", { weekday: "short", day: "numeric", month: "short" });
+                sortKey = d.toISOString().split("T")[0];
+                break;
+              case "week": {
+                const ws = new Date(d);
+                ws.setDate(ws.getDate() - ((ws.getDay() + 6) % 7)); // Monday
+                key = `KW ${ws.toLocaleDateString("de-DE", { day: "numeric", month: "short" })}`;
+                sortKey = ws.toISOString().split("T")[0];
+                break;
               }
-              buckets[key] = (buckets[key] || 0) + 1;
-            });
-            return buckets;
-          };
+              case "month":
+                key = d.toLocaleDateString("de-DE", { month: "short", year: "2-digit" });
+                sortKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+                break;
+              case "year":
+                key = String(d.getFullYear());
+                sortKey = key;
+                break;
+            }
+            buckets[key] = (buckets[key] || 0) + 1;
+            sortKeys[key] = sortKey;
+          });
 
-          const buckets = getBuckets();
-          const entries = Object.entries(buckets);
-          const maxVal = Math.max(...Object.values(buckets), 1);
+          const entries = Object.entries(buckets).sort((a, b) => (sortKeys[a[0]] || "").localeCompare(sortKeys[b[0]] || ""));
+          const maxVal = Math.max(...entries.map(([, v]) => v), 1);
 
-          return entries.length > 0 ? (
+          return (
             <div className="bg-white rounded-xl shadow-sm p-6 mb-8">
               <div className="flex items-center justify-between mb-4">
                 <div>
                   <h2 className="text-lg font-semibold text-gray-900">📞 Calls Created</h2>
                   <p className="text-sm text-gray-500">Gebuchte Termine im Zeitverlauf</p>
                 </div>
-                <span className="text-2xl font-bold text-blue-600">{filteredByPeriod.length}</span>
-              </div>
-              <div className="flex items-end gap-2" style={{ height: "200px" }}>
-                {entries.map(([label, count]) => (
-                  <div key={label} className="flex-1 flex flex-col items-center justify-end h-full">
-                    <span className="text-xs font-bold text-gray-700 mb-1">{count}</span>
-                    <div
-                      className="w-full bg-blue-500 rounded-t-md hover:bg-blue-600 transition min-h-[4px]"
-                      style={{ height: `${Math.max((count / maxVal) * 170, 4)}px` }}
-                    />
-                    <span className="text-[10px] text-gray-500 mt-1 text-center leading-tight">{label}</span>
+                <div className="flex items-center gap-3">
+                  <div className="flex bg-gray-100 rounded-lg p-0.5">
+                    {([["day", "Tag"], ["week", "Woche"], ["month", "Monat"], ["year", "Jahr"]] as const).map(([k, l]) => (
+                      <button key={k} onClick={() => setChartGroupBy(k)}
+                        className={`px-2.5 py-1 rounded-md text-xs font-medium transition ${chartGroupBy === k ? "bg-white shadow text-gray-900" : "text-gray-500 hover:text-gray-700"}`}>
+                        {l}
+                      </button>
+                    ))}
                   </div>
-                ))}
+                  <span className="text-2xl font-bold text-blue-600">{filteredByPeriod.length}</span>
+                </div>
               </div>
+              {entries.length === 0 ? (
+                <p className="text-center text-gray-400 py-8">Keine Daten im gewählten Zeitraum</p>
+              ) : (
+                <div className="flex items-end gap-1.5" style={{ height: "200px" }}>
+                  {entries.map(([label, count]) => (
+                    <div key={label} className="flex-1 flex flex-col items-center justify-end h-full group">
+                      <span className="text-xs font-bold text-gray-700 mb-1 opacity-0 group-hover:opacity-100 transition">{count}</span>
+                      <div
+                        className="w-full bg-blue-500 rounded-t-md hover:bg-blue-600 transition min-h-[4px] relative"
+                        style={{ height: `${Math.max((count / maxVal) * 170, 4)}px` }}
+                      >
+                        <span className="absolute -top-5 left-1/2 -translate-x-1/2 text-[10px] font-bold text-blue-600">{count}</span>
+                      </div>
+                      <span className="text-[9px] text-gray-500 mt-1 text-center leading-tight truncate w-full">{label}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
-          ) : null;
+          );
         })()}
 
         {/* Conversion Funnel */}
