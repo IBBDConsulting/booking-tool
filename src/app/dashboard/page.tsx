@@ -397,26 +397,26 @@ export default function DashboardPage() {
           return (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
           {/* Show-Up Rate */}
-          <div className="bg-white rounded-xl shadow-sm p-5 cursor-pointer hover:ring-2 hover:ring-green-300 transition" onClick={() => attended > 0 && setModalType("attended")}>
-            <h3 className="text-sm font-semibold text-gray-500 mb-3">Show-Up Rate {attended > 0 && <span className="text-green-500">→</span>}</h3>
+          <div className="bg-white rounded-xl shadow-sm p-5 cursor-pointer hover:ring-2 hover:ring-gray-300 transition" onClick={() => attended > 0 && setModalType("attended")}>
+            <h3 className="text-sm font-semibold text-gray-500 mb-3">Show-Up Rate {attended > 0 && <span className="text-gray-400">→</span>}</h3>
             <div className="flex items-end gap-3">
-              <span className={`text-3xl font-bold ${showUpRate >= 80 ? "text-green-600" : showUpRate >= 60 ? "text-yellow-600" : "text-red-600"}`}>{showUpRate}%</span>
+              <span className="text-3xl font-bold text-gray-900">{showUpRate}%</span>
               <span className="text-sm text-gray-400 mb-1">{attended} von {decidedBookings.length}</span>
             </div>
             <div className="w-full bg-gray-200 rounded-full h-2 mt-3">
-              <div className="bg-green-500 h-2 rounded-full transition-all" style={{ width: `${showUpRate}%` }} />
+              <div className="bg-gray-500 h-2 rounded-full transition-all" style={{ width: `${showUpRate}%` }} />
             </div>
           </div>
 
           {/* No-Show Rate */}
-          <div className="bg-white rounded-xl shadow-sm p-5 cursor-pointer hover:ring-2 hover:ring-red-300 transition" onClick={() => noShow > 0 && setModalType("noshow")}>
-            <h3 className="text-sm font-semibold text-gray-500 mb-3">No-Show Rate {noShow > 0 && <span className="text-red-500">→</span>}</h3>
+          <div className="bg-white rounded-xl shadow-sm p-5 cursor-pointer hover:ring-2 hover:ring-gray-300 transition" onClick={() => noShow > 0 && setModalType("noshow")}>
+            <h3 className="text-sm font-semibold text-gray-500 mb-3">No-Show Rate {noShow > 0 && <span className="text-gray-400">→</span>}</h3>
             <div className="flex items-end gap-3">
-              <span className={`text-3xl font-bold ${noShowRate <= 10 ? "text-green-600" : noShowRate <= 25 ? "text-yellow-600" : "text-red-600"}`}>{noShowRate}%</span>
+              <span className="text-3xl font-bold text-gray-900">{noShowRate}%</span>
               <span className="text-sm text-gray-400 mb-1">{noShow} von {decidedBookings.length}</span>
             </div>
             <div className="w-full bg-gray-200 rounded-full h-2 mt-3">
-              <div className="bg-red-500 h-2 rounded-full transition-all" style={{ width: `${noShowRate}%` }} />
+              <div className="bg-gray-500 h-2 rounded-full transition-all" style={{ width: `${noShowRate}%` }} />
             </div>
           </div>
 
@@ -1176,7 +1176,7 @@ export default function DashboardPage() {
                       const rate = Math.round((data.count / data.total) * 100);
                       const isGood = modalType === "attended" ? rate >= 80 : rate <= 10;
                       const isMid = modalType === "attended" ? rate >= 60 : rate <= 25;
-                      const barColor = modalType === "attended" ? "bg-green-400" : "bg-red-400";
+                      const barColor = "bg-gray-400";
                       return (
                         <div key={name}>
                           <div className="flex items-center justify-between text-xs mb-0.5">
