@@ -80,10 +80,29 @@ export async function GET(request: Request) {
     }
 
     // Use Europe/Berlin timezone for correct UTC conversion
-    // CET = UTC+1, CEST = UTC+2 (last Sunday March - last Sunday October)
-    const testMonth = new Date(`${date}T12:00:00Z`).getUTCMonth();
-    const isCEST = testMonth >= 2 && testMonth <= 9; // rough CEST check
-    const tzOffsetHours = isCEST ? 2 : 1;
+    // Determine if date is in CET (UTC+1) or CEST (UTC+2)
+    // CEST starts last Sunday of March at 02:00 CET, ends last Sunday of October at 03:00 CEST
+    function isCESTDate(dateStr: string): boolean {
+      const d = new Date(`${dateStr}T12:00:00Z`);
+      const year = d.getUTCFullYear();
+      const month = d.getUTCMonth(); // 0-11
+
+      if (month < 2 || month > 9) return false; // Nov-Feb = CET
+      if (month > 2 && month < 9) return true;  // Apr-Sep = CEST
+
+      // March: find last Sunday
+      if (month === 2) {
+        const lastDay = new Date(Date.UTC(year, 3, 0)); // March 31 or 30
+        const lastSun = lastDay.getUTCDate() - lastDay.getUTCDay();
+        return d.getUTCDate() >= lastSun;
+      }
+      // October: find last Sunday
+      const lastDay = new Date(Date.UTC(year, 10, 0)); // Oct 31 or 30
+      const lastSun = lastDay.getUTCDate() - lastDay.getUTCDay();
+      return d.getUTCDate() < lastSun;
+    }
+
+    const tzOffsetHours = isCESTDate(date) ? 2 : 1;
     const tzOffsetStr = `+0${tzOffsetHours}:00`;
 
     // Day boundaries in correct timezone
