@@ -585,6 +585,9 @@ export default function DashboardPage() {
                         {formatDateTime(booking.startTime, booking.duration)}
                         <span className="text-gray-400 ml-2">· {booking.bookingPage?.title || `${booking.duration} Min`}</span>
                       </p>
+                      <p className="text-xs text-gray-400 mt-0.5">
+                        Gebucht am {new Date(booking.createdAt).toLocaleDateString("de-DE", { weekday: "long", day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" })} Uhr
+                      </p>
                       {booking.agent && (
                         <span className="mt-1 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
                           Agent: {booking.agent.name}
