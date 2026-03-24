@@ -16,6 +16,7 @@ interface EmailLead {
   lastName: string;
   email: string;
   company?: string | null;
+  role?: string | null;
 }
 
 function formatDateTimeDE(date: Date, timezone: string): string {
@@ -164,6 +165,61 @@ export async function sendBookingReminder(
     return true;
   } catch (error) {
     console.error("Reminder-E-Mail fehlgeschlagen:", error);
+    return false;
+  }
+}
+
+export async function sendInternalNotification(
+  memberEmail: string,
+  memberName: string,
+  booking: EmailBooking,
+  lead: EmailLead,
+  agentName?: string | null,
+  meetLink?: string | null,
+  internalNotes?: string | null
+): Promise<boolean> {
+  const dateFormatted = formatDateTimeDE(booking.startTime, booking.timezone);
+
+  const html = `
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 520px; margin: 0 auto; padding: 32px 16px;">
+      <div style="background: #f0fdf4; border-radius: 12px; padding: 20px; text-align: center; margin-bottom: 24px;">
+        <div style="font-size: 36px; margin-bottom: 8px;">🎯</div>
+        <h1 style="font-size: 20px; color: #166534; margin: 0;">Neuer Termin gebucht!</h1>
+      </div>
+
+      <div style="background: #f9fafb; border-radius: 8px; padding: 16px; margin: 20px 0;">
+        <p style="margin: 0 0 8px; font-size: 15px;"><strong>${lead.firstName} ${lead.lastName}</strong></p>
+        <p style="margin: 0 0 4px; color: #6b7280; font-size: 14px;">📧 ${lead.email}</p>
+        ${lead.company ? `<p style="margin: 0 0 4px; color: #6b7280; font-size: 14px;">🏢 ${lead.company}</p>` : ""}
+        ${lead.role ? `<p style="margin: 0 0 4px; color: #6b7280; font-size: 14px;">👤 ${lead.role}</p>` : ""}
+      </div>
+
+      <div style="background: #f9fafb; border-radius: 8px; padding: 16px; margin: 20px 0;">
+        <p style="margin: 0 0 4px; color: #111827; font-size: 15px; font-weight: 600;">📅 ${dateFormatted} Uhr</p>
+        <p style="margin: 0 0 4px; color: #6b7280; font-size: 14px;">Dauer: ${booking.duration} Minuten</p>
+        ${agentName ? `<p style="margin: 0 0 4px; color: #6b7280; font-size: 14px;">🔗 Gebucht von: <strong>${agentName}</strong></p>` : ""}
+        ${meetLink ? `<p style="margin: 8px 0 0;"><a href="${meetLink}" style="color: #2563eb; text-decoration: none; font-size: 14px;">Google Meet beitreten →</a></p>` : ""}
+      </div>
+
+      ${internalNotes ? `
+        <div style="background: #fefce8; border-radius: 8px; padding: 16px; margin: 20px 0; border-left: 3px solid #eab308;">
+          <p style="margin: 0 0 4px; font-size: 13px; font-weight: 600; color: #854d0e;">📝 Interne Notizen:</p>
+          <p style="margin: 0; color: #713f12; font-size: 14px;">${internalNotes}</p>
+        </div>
+      ` : ""}
+    </div>
+  `;
+
+  try {
+    await resend.emails.send({
+      from: "Terminbuchung <onboarding@resend.dev>",
+      to: memberEmail,
+      subject: `Neuer Termin: ${lead.firstName} ${lead.lastName}${lead.company ? ` (${lead.company})` : ""} – ${dateFormatted}`,
+      html,
+    });
+    return true;
+  } catch (error) {
+    console.error("Interne Benachrichtigung fehlgeschlagen:", error);
     return false;
   }
 }

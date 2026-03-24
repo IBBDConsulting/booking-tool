@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { createCalendarEvent } from "@/lib/google-calendar";
-import { sendBookingConfirmation } from "@/lib/email";
+import { sendBookingConfirmation, sendInternalNotification } from "@/lib/email";
 
 export async function POST(request: Request) {
   try {
@@ -171,6 +171,29 @@ export async function POST(request: Request) {
       }
     } catch (error) {
       console.error("E-Mail Fehler:", error);
+    }
+
+    // Send internal notification to member
+    try {
+      const memberEmail = bookingPage.member.googleCalendarId;
+      if (memberEmail) {
+        let agentName: string | null = null;
+        if (agentId) {
+          const agentRecord = await prisma.agent.findUnique({ where: { id: agentId } });
+          agentName = agentRecord?.name || null;
+        }
+        await sendInternalNotification(
+          memberEmail,
+          "Team",
+          booking,
+          lead,
+          agentName,
+          meetLink,
+          internalNotes
+        );
+      }
+    } catch (error) {
+      console.error("Interne Benachrichtigung Fehler:", error);
     }
 
     return NextResponse.json({
