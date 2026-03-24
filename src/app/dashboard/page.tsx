@@ -578,7 +578,7 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Bookings List */}
+        {/* Bookings List - grouped by date */}
         <div className="bg-white rounded-xl shadow-sm overflow-hidden">
           {loading ? (
             <div className="p-12 text-center text-gray-400">Laden...</div>
@@ -588,9 +588,24 @@ export default function DashboardPage() {
                 ? "Noch keine Buchungen vorhanden."
                 : "Keine Buchungen mit diesem Filter."}
             </div>
-          ) : (
-            <div className="divide-y divide-gray-100">
-              {filteredBookings.map((booking) => (
+          ) : (() => {
+            // Group by date
+            const grouped: Record<string, typeof filteredBookings> = {};
+            filteredBookings.forEach((b) => {
+              const d = new Date(b.startTime);
+              const key = d.toLocaleDateString("de-DE", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+              if (!grouped[key]) grouped[key] = [];
+              grouped[key].push(b);
+            });
+            return (
+            <div>
+              {Object.entries(grouped).map(([dateLabel, dateBookings]) => (
+                <div key={dateLabel}>
+                  <div className="px-5 py-3 bg-gray-50 border-b border-gray-200">
+                    <h3 className="text-sm font-bold text-gray-700">{dateLabel}</h3>
+                  </div>
+                  <div className="divide-y divide-gray-100">
+              {dateBookings.map((booking) => (
                 <div key={booking.id} className="p-5 hover:bg-gray-50/50 transition">
                   <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
                     {/* Left: Lead Info */}
@@ -769,8 +784,12 @@ export default function DashboardPage() {
                   </div>
                 </div>
               ))}
+                  </div>
+                </div>
+              ))}
             </div>
-          )}
+            );
+          })()}
         </div>
       </div>
     </main>
