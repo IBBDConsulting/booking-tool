@@ -1,10 +1,14 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
-// GET: List all booking pages (for booking page selection + settings)
-export async function GET() {
+// GET: List booking pages (optionally filtered by memberId)
+export async function GET(request: Request) {
   try {
+    const { searchParams } = new URL(request.url);
+    const memberId = searchParams.get("memberId");
+
     const bookingPages = await prisma.bookingPage.findMany({
+      where: memberId ? { memberId } : undefined,
       orderBy: { duration: "asc" },
     });
 

@@ -1,12 +1,15 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
-// GET: Return current member info (simplified: returns first member)
-export async function GET() {
+// GET: Return member info (by memberId query param, or first member)
+export async function GET(request: Request) {
   try {
-    const member = await prisma.orgMember.findFirst({
-      include: { user: true },
-    });
+    const { searchParams } = new URL(request.url);
+    const memberId = searchParams.get("memberId");
+
+    const member = memberId
+      ? await prisma.orgMember.findUnique({ where: { id: memberId }, include: { user: true } })
+      : await prisma.orgMember.findFirst({ include: { user: true } });
 
     if (!member) {
       return NextResponse.json(
@@ -43,7 +46,9 @@ export async function GET() {
 export async function PATCH(request: Request) {
   try {
     const body = await request.json();
-    const member = await prisma.orgMember.findFirst();
+    const member = body.memberId
+      ? await prisma.orgMember.findUnique({ where: { id: body.memberId } })
+      : await prisma.orgMember.findFirst();
 
     if (!member) {
       return NextResponse.json(

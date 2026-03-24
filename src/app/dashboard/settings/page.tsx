@@ -49,6 +49,13 @@ const allDays = [1, 2, 3, 4, 5, 6, 0]; // Mo-Sa, So
 
 const ADMIN_PASSWORD = "Salesbros2024!";
 
+interface TeamMember {
+  id: string;
+  name: string;
+  email: string;
+  googleCalendarConnected: boolean;
+}
+
 export default function SettingsPage() {
   const [bookingPages, setBookingPages] = useState<BookingPageType[]>([]);
   const [member, setMember] = useState<MemberSettings | null>(null);
@@ -60,6 +67,8 @@ export default function SettingsPage() {
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [memberForm, setMemberForm] = useState({ workingHoursStart: "09:00", workingHoursEnd: "17:00", bufferMinutes: "15", workingDays: [1,2,3,4,5] as number[], breaks: [] as BreakSlot[], additionalCalendars: "" });
   const [authenticated, setAuthenticated] = useState(false);
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
 
   useEffect(() => {
     const saved = localStorage.getItem("dashboard_auth");
@@ -70,10 +79,22 @@ export default function SettingsPage() {
     }
   }, []);
 
+  // Load team members list
   useEffect(() => {
     if (!authenticated) return;
-    fetch("/api/booking-pages").then(r => r.json()).then(d => { if (d.success) setBookingPages(d.bookingPages || []); }).catch(e => console.error("[Settings] fetch error:", e));
-    fetch("/api/member").then(r => r.json()).then(d => {
+    fetch("/api/members").then(r => r.json()).then(d => {
+      if (d.success && d.members.length > 0) {
+        setTeamMembers(d.members);
+        if (!selectedMemberId) setSelectedMemberId(d.members[0].id);
+      }
+    });
+  }, [authenticated]);
+
+  // Load member-specific data when selection changes
+  useEffect(() => {
+    if (!authenticated || !selectedMemberId) return;
+    fetch(`/api/booking-pages?memberId=${selectedMemberId}`).then(r => r.json()).then(d => { if (d.success) setBookingPages(d.bookingPages || []); }).catch(e => console.error("[Settings] fetch error:", e));
+    fetch(`/api/member?memberId=${selectedMemberId}`).then(r => r.json()).then(d => {
       if (d.success) {
         setMember(d.member);
         setMemberForm({
@@ -86,7 +107,7 @@ export default function SettingsPage() {
         });
       }
     });
-  }, [authenticated]);
+  }, [authenticated, selectedMemberId]);
 
   const startEdit = (page: BookingPageType) => {
     setEditingId(page.id);
@@ -132,6 +153,7 @@ export default function SettingsPage() {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
+        memberId: selectedMemberId,
         workingHoursStart: memberForm.workingHoursStart,
         workingHoursEnd: memberForm.workingHoursEnd,
         bufferMinutes: Number(memberForm.bufferMinutes),
@@ -166,6 +188,29 @@ export default function SettingsPage() {
             Zurück zum Dashboard
           </a>
         </div>
+
+        {/* Member Switcher */}
+        {teamMembers.length > 1 && (
+          <div className="bg-white rounded-xl shadow-sm p-4 mb-6">
+            <label className="block text-sm font-medium text-gray-700 mb-2">Einstellungen für:</label>
+            <div className="flex gap-2">
+              {teamMembers.map((tm) => (
+                <button
+                  key={tm.id}
+                  onClick={() => setSelectedMemberId(tm.id)}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
+                    selectedMemberId === tm.id
+                      ? "bg-blue-600 text-white"
+                      : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                  }`}
+                >
+                  {tm.name}
+                  {tm.googleCalendarConnected && <span className="ml-1.5 text-xs">✅</span>}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Termintypen */}
         <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
