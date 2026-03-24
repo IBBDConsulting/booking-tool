@@ -398,6 +398,29 @@ export default function DashboardPage() {
             <div className="w-full bg-gray-200 rounded-full h-2 mt-3">
               <div className="bg-green-500 h-2 rounded-full transition-all" style={{ width: `${showUpRate}%` }} />
             </div>
+            {/* Show-Up by agent */}
+            {Object.keys(noShowByAgent).length > 0 && (
+              <div className="mt-3 pt-3 border-t border-gray-100 space-y-2">
+                <p className="text-xs font-semibold text-gray-500">Pro Agent:</p>
+                {Object.entries(noShowByAgent).sort((a, b) => ((b[1].total - b[1].noShow) / b[1].total) - ((a[1].total - a[1].noShow) / a[1].total)).map(([name, data]) => {
+                  const showUp = data.total - data.noShow;
+                  const rate = Math.round((showUp / data.total) * 100);
+                  return (
+                    <div key={name}>
+                      <div className="flex items-center justify-between text-xs mb-0.5">
+                        <span className="text-gray-600">{name}</span>
+                        <span className={`font-semibold ${rate >= 80 ? "text-green-600" : rate >= 60 ? "text-yellow-600" : "text-red-600"}`}>
+                          {showUp}/{data.total} ({rate}%)
+                        </span>
+                      </div>
+                      <div className="w-full bg-gray-100 rounded-full h-1">
+                        <div className="bg-green-400 h-1 rounded-full" style={{ width: `${rate}%` }} />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           {/* No-Show Rate */}
@@ -412,15 +435,21 @@ export default function DashboardPage() {
             </div>
             {/* No-Show by agent */}
             {Object.keys(noShowByAgent).length > 0 && (
-              <div className="mt-3 pt-3 border-t border-gray-100 space-y-1">
+              <div className="mt-3 pt-3 border-t border-gray-100 space-y-2">
+                <p className="text-xs font-semibold text-gray-500">Pro Agent:</p>
                 {Object.entries(noShowByAgent).sort((a, b) => (b[1].noShow / b[1].total) - (a[1].noShow / a[1].total)).map(([name, data]) => {
                   const rate = Math.round((data.noShow / data.total) * 100);
                   return (
-                    <div key={name} className="flex items-center justify-between text-xs">
-                      <span className="text-gray-600">{name}</span>
-                      <span className={`font-semibold ${rate <= 10 ? "text-green-600" : rate <= 25 ? "text-yellow-600" : "text-red-600"}`}>
-                        {data.noShow}/{data.total} ({rate}%)
-                      </span>
+                    <div key={name}>
+                      <div className="flex items-center justify-between text-xs mb-0.5">
+                        <span className="text-gray-600">{name}</span>
+                        <span className={`font-semibold ${rate <= 10 ? "text-green-600" : rate <= 25 ? "text-yellow-600" : "text-red-600"}`}>
+                          {data.noShow}/{data.total} ({rate}%)
+                        </span>
+                      </div>
+                      <div className="w-full bg-gray-100 rounded-full h-1">
+                        <div className="bg-red-400 h-1 rounded-full" style={{ width: `${rate}%` }} />
+                      </div>
                     </div>
                   );
                 })}
