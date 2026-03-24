@@ -72,30 +72,23 @@ export async function POST(request: Request) {
     }
 
     // Parse date and time into start/end timestamps with timezone
-    // Client sends date (YYYY-MM-DD) and time (HH:MM) in the user's local timezone
-    // We also receive utcOffset (minutes) from the client for reliable conversion
-    const tz = timezone || "Europe/Berlin";
-    const utcOffsetMinutes = body.utcOffset; // e.g. -60 for CET (UTC+1), -120 for CEST (UTC+2)
+    // Client sends date (YYYY-MM-DD), time (HH:MM), and utcOffset (minutes from UTC)
+    // utcOffset from client: positive = east of UTC (e.g. 120 for CEST/UTC+2)
+    const utcOffsetMinutes = typeof body.utcOffset === "number" ? body.utcOffset : 60; // default CET
 
-    let startTime: Date;
-    if (typeof utcOffsetMinutes === "number") {
-      // Use the offset sent by the client for reliable conversion
-      // JS getTimezoneOffset() returns negative for east of UTC
-      // e.g. CET = UTC+1, getTimezoneOffset() = -60
-      // So local 09:00 CET = 09:00 - (-60min) = 09:00 - 01:00 UTC = 08:00 UTC
-      const localMs = new Date(`${date}T${time}:00Z`).getTime();
-      startTime = new Date(localMs + utcOffsetMinutes * 60 * 1000);
-    } else {
-      // Fallback: assume Europe/Berlin (CET = UTC+1, CEST = UTC+2)
-      // Check if date falls in CEST (last Sunday March - last Sunday October)
-      const testDate = new Date(`${date}T12:00:00Z`);
-      const month = testDate.getUTCMonth(); // 0-11
-      const isCEST = month >= 2 && month <= 9; // March-October roughly
-      const offsetHours = isCEST ? 2 : 1;
-      startTime = new Date(`${date}T${time}:00+0${offsetHours}:00`);
-    }
-    const endTime = new Date(startTime);
-    endTime.setMinutes(endTime.getMinutes() + bookingPage.duration);
+    // Build ISO string with explicit offset: e.g. "2026-03-24T09:00:00+02:00"
+    const offsetHours = Math.floor(Math.abs(utcOffsetMinutes) / 60);
+    const offsetMins = Math.abs(utcOffsetMinutes) % 60;
+    const offsetSign = utcOffsetMinutes >= 0 ? "+" : "-";
+    const offsetStr = `${offsetSign}${String(offsetHours).padStart(2, "0")}:${String(offsetMins).padStart(2, "0")}`;
+    const isoString = `${date}T${time}:00${offsetStr}`;
+
+    console.log(`[Booking] Local: ${date} ${time}, offset: ${utcOffsetMinutes}min, ISO: ${isoString}`);
+
+    const startTime = new Date(isoString);
+    const endTime = new Date(startTime.getTime() + bookingPage.duration * 60 * 1000);
+
+    console.log(`[Booking] UTC start: ${startTime.toISOString()}, UTC end: ${endTime.toISOString()}`);
 
     // Check for double bookings on the same member at the same time
     const existingBooking = await prisma.booking.findFirst({
@@ -132,13 +125,21 @@ export async function POST(request: Request) {
 
     // Google Calendar: create event if member has connected calendar
     let meetLink: string | null = null;
+    const calSubject = (bookingPage.calendarSubject || "Termin")
+      .replace(/\{company\}/g, lead.company || "")
+      .replace(/\{name\}/g, `${lead.firstName} ${lead.lastName}`)
+      .replace(/\{email\}/g, lead.email || "");
+    const calDescription = (bookingPage.description || "")
+      .replace(/\{company\}/g, lead.company || "")
+      .replace(/\{name\}/g, `${lead.firstName} ${lead.lastName}`)
+      .replace(/\{email\}/g, lead.email || "");
     try {
       const calendarResult = await createCalendarEvent(
         bookingPage.member,
         booking,
         lead,
-        bookingPage.calendarSubject,
-        bookingPage.description
+        calSubject,
+        calDescription
       );
       if (calendarResult) {
         meetLink = calendarResult.meetLink;
@@ -156,7 +157,11 @@ export async function POST(request: Request) {
 
     // Send confirmation email
     try {
-      const emailSent = await sendBookingConfirmation(booking, lead, meetLink, bookingPage.emailSubject);
+      const emailSubjectResolved = (bookingPage.emailSubject || "Terminbestätigung")
+        .replace(/\{company\}/g, lead.company || "")
+        .replace(/\{name\}/g, `${lead.firstName} ${lead.lastName}`)
+        .replace(/\{email\}/g, lead.email || "");
+      const emailSent = await sendBookingConfirmation(booking, lead, meetLink, emailSubjectResolved);
       if (emailSent) {
         await prisma.booking.update({
           where: { id: booking.id },
