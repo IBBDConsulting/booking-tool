@@ -658,24 +658,40 @@ export default function DashboardPage() {
                       ))}
                     </div>
                   </div>
-                  {/* Individual Bookings */}
-                  <div className="overflow-y-auto max-h-[400px] divide-y divide-gray-100">
-                    {detailBookings.map(b => (
-                      <div key={b.id} className="px-6 py-3">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-sm font-semibold text-gray-900">{b.lead.firstName} {b.lead.lastName}</p>
-                            <p className="text-xs text-gray-500">{b.lead.email}{b.lead.company ? ` · ${b.lead.company}` : ""}</p>
+                  {/* Individual Bookings grouped by day */}
+                  <div className="overflow-y-auto max-h-[400px]">
+                    {(() => {
+                      const byDay: Record<string, typeof detailBookings> = {};
+                      detailBookings.forEach(b => {
+                        const dayKey = new Date(b.startTime).toLocaleDateString("de-DE", { weekday: "long", day: "numeric", month: "long" });
+                        if (!byDay[dayKey]) byDay[dayKey] = [];
+                        byDay[dayKey].push(b);
+                      });
+                      return Object.entries(byDay).map(([day, bks]) => (
+                        <div key={day}>
+                          <div className="px-6 py-2 bg-gray-50 border-y border-gray-100">
+                            <span className="text-xs font-bold text-gray-600">{day}</span>
+                            <span className="text-xs text-gray-400 ml-2">({bks.length})</span>
                           </div>
-                          <div className="text-right">
-                            <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${stageColors[b.stage || "BOOKED"]}`}>
-                              {stageLabels[b.stage || "BOOKED"]}
-                            </span>
-                            {b.agent && <p className="text-xs text-orange-600 mt-1">{b.agent.name}</p>}
+                          <div className="divide-y divide-gray-50">
+                            {bks.map(b => (
+                              <div key={b.id} className="px-6 py-2.5 flex items-center justify-between">
+                                <div>
+                                  <p className="text-sm font-medium text-gray-900">{b.lead.firstName} {b.lead.lastName}</p>
+                                  <p className="text-xs text-gray-400">{b.lead.email}</p>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${stageColors[b.stage || "BOOKED"]}`}>
+                                    {stageLabels[b.stage || "BOOKED"]}
+                                  </span>
+                                  {b.agent && <span className="text-xs text-orange-600">{b.agent.name}</span>}
+                                </div>
+                              </div>
+                            ))}
                           </div>
                         </div>
-                      </div>
-                    ))}
+                      ));
+                    })()}
                   </div>
                 </div>
               </div>
