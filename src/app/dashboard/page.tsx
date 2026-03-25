@@ -18,6 +18,7 @@ interface Lead {
   lastName: string;
   email: string;
   company: string | null;
+  companySize: string | null;
   role: string | null;
   agent: Agent | null;
 }
@@ -447,6 +448,95 @@ export default function DashboardPage() {
         </div>
           );
         })()}
+
+        {/* Company Size + Lead Time Analysis */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+          {/* Company Size Conversion */}
+          {(() => {
+            const sizeOrder = ["1-10", "11-50", "51-200", "201-1000", "1000+"];
+            const sizeStats: Record<string, { total: number; firstCall: number; demo: number; deal: number }> = {};
+            sizeOrder.forEach(s => sizeStats[s] = { total: 0, firstCall: 0, demo: 0, deal: 0 });
+            filteredByPeriod.forEach(b => {
+              const size = b.lead.companySize;
+              if (size && sizeStats[size]) {
+                sizeStats[size].total++;
+                if (b.stage === "FIRST_CALL" || b.stage === "DEMO" || b.stage === "DEAL") sizeStats[size].firstCall++;
+                if (b.stage === "DEMO" || b.stage === "DEAL") sizeStats[size].demo++;
+                if (b.stage === "DEAL") sizeStats[size].deal++;
+              }
+            });
+            const maxTotal = Math.max(...Object.values(sizeStats).map(s => s.total), 1);
+            return (
+              <div className="bg-white rounded-xl shadow-sm p-5">
+                <h3 className="text-sm font-semibold text-gray-700 mb-4">Conversion nach Firmengröße</h3>
+                <div className="space-y-3">
+                  {sizeOrder.map(size => {
+                    const s = sizeStats[size];
+                    if (s.total === 0) return null;
+                    const convRate = s.total > 0 ? Math.round((s.firstCall / s.total) * 100) : 0;
+                    return (
+                      <div key={size}>
+                        <div className="flex justify-between text-xs mb-1">
+                          <span className="font-medium text-gray-700">{size} MA</span>
+                          <span className="text-gray-500">{s.total} Calls · <span className={`font-semibold ${convRate >= 50 ? "text-green-600" : convRate >= 30 ? "text-yellow-600" : "text-gray-600"}`}>{convRate}%</span> Conv.</span>
+                        </div>
+                        <div className="w-full bg-gray-100 rounded-full h-2">
+                          <div className="bg-blue-500 h-2 rounded-full" style={{ width: `${(s.total / maxTotal) * 100}%` }} />
+                        </div>
+                        <div className="flex gap-2 mt-0.5 text-[10px] text-gray-400">
+                          <span>1st Call: {s.firstCall}</span>
+                          <span>Demo: {s.demo}</span>
+                          <span>Deal: {s.deal}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {Object.values(sizeStats).every(s => s.total === 0) && (
+                    <p className="text-sm text-gray-400">Keine Daten — Firmengröße wird ab der nächsten Buchung erfasst</p>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* Lead Time Analysis */}
+          {(() => {
+            const leadTimes: number[] = [];
+            const ltBuckets: Record<string, number> = { "Gleicher Tag": 0, "1-2 Tage": 0, "3-7 Tage": 0, "1-2 Wochen": 0, "2+ Wochen": 0 };
+            filteredByPeriod.forEach(b => {
+              const created = new Date(b.createdAt).getTime();
+              const meeting = new Date(b.startTime).getTime();
+              const days = Math.round((meeting - created) / (1000 * 60 * 60 * 24));
+              leadTimes.push(days);
+              if (days <= 0) ltBuckets["Gleicher Tag"]++;
+              else if (days <= 2) ltBuckets["1-2 Tage"]++;
+              else if (days <= 7) ltBuckets["3-7 Tage"]++;
+              else if (days <= 14) ltBuckets["1-2 Wochen"]++;
+              else ltBuckets["2+ Wochen"]++;
+            });
+            const avgDays = leadTimes.length > 0 ? Math.round(leadTimes.reduce((a, b) => a + b, 0) / leadTimes.length) : 0;
+            const maxBucket = Math.max(...Object.values(ltBuckets), 1);
+            return (
+              <div className="bg-white rounded-xl shadow-sm p-5">
+                <h3 className="text-sm font-semibold text-gray-700 mb-1">Vorlaufzeit (Buchung → Termin)</h3>
+                <p className="text-xs text-gray-400 mb-4">Durchschnitt: <span className="font-bold text-gray-700">{avgDays} Tage</span></p>
+                <div className="space-y-2">
+                  {Object.entries(ltBuckets).map(([label, count]) => (
+                    <div key={label}>
+                      <div className="flex justify-between text-xs mb-0.5">
+                        <span className="text-gray-600">{label}</span>
+                        <span className="font-medium text-gray-700">{count}</span>
+                      </div>
+                      <div className="w-full bg-gray-100 rounded-full h-2">
+                        <div className="bg-blue-400 h-2 rounded-full" style={{ width: `${(count / maxBucket) * 100}%` }} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
+        </div>
 
         {/* Calls Created Chart */}
         {(() => {

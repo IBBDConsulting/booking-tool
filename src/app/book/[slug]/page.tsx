@@ -145,6 +145,7 @@ export default function BookingPage({ params }: { params: { slug: string } }) {
           lastName: formData.lastName || "",
           email: formData.email || "",
           company: formData.company || "",
+          companySize: formData.companySize || "",
           role: formData.role || "",
           date: `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, "0")}-${String(selectedDate.getDate()).padStart(2, "0")}`,
           time: selectedTime,
@@ -386,6 +387,22 @@ export default function BookingPage({ params }: { params: { slug: string } }) {
                         )}
                       </div>
                     ))}
+                    {/* Company Size */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Unternehmensgröße</label>
+                      <select
+                        value={formData.companySize || ""}
+                        onChange={(e) => setFormData({ ...formData, companySize: e.target.value })}
+                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
+                      >
+                        <option value="">Bitte wählen...</option>
+                        <option value="1-10">1-10 Mitarbeiter</option>
+                        <option value="11-50">11-50 Mitarbeiter</option>
+                        <option value="51-200">51-200 Mitarbeiter</option>
+                        <option value="201-1000">201-1.000 Mitarbeiter</option>
+                        <option value="1000+">1.000+ Mitarbeiter</option>
+                      </select>
+                    </div>
                     {/* Internal notes - only visible in dashboard */}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">

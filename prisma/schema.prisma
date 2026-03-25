@@ -118,8 +118,9 @@ model Lead {
   firstName String
   lastName  String
   email     String
-  company   String?
-  role      String?
+  company     String?
+  companySize String?
+  role        String?
 
   agentId      String?
   agent        Agent?  @relation(fields: [agentId], references: [id])
