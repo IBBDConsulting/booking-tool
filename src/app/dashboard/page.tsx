@@ -678,7 +678,6 @@ export default function DashboardPage() {
                               <div key={b.id} className="px-6 py-2.5 flex items-center justify-between">
                                 <div>
                                   <p className="text-sm font-medium text-gray-900">{b.lead.firstName} {b.lead.lastName}</p>
-                                  <p className="text-xs text-gray-400">{b.lead.email}</p>
                                 </div>
                                 <div className="flex items-center gap-2">
                                   <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${stageColors[b.stage || "BOOKED"]}`}>
