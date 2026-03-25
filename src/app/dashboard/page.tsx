@@ -124,6 +124,7 @@ export default function DashboardPage() {
   const [outcomeFlow, setOutcomeFlow] = useState<{ bookingId: string; step: "outcome" | "reason" | "deal"; outcome?: "sale" | "nosale" } | null>(null);
   const [dealValue, setDealValue] = useState("");
   const [chartGroupBy, setChartGroupBy] = useState<"day" | "week" | "month" | "year">("week");
+  const [chartDetailLabel, setChartDetailLabel] = useState<string | null>(null);
   const [authenticated, setAuthenticated] = useState(false);
   const [passwordInput, setPasswordInput] = useState("");
   const [passwordError, setPasswordError] = useState(false);
@@ -588,6 +589,7 @@ export default function DashboardPage() {
         {(() => {
           // Group bookings by selected granularity
           const buckets: Record<string, number> = {};
+          const bucketBookings: Record<string, typeof filteredByPeriod> = {};
           const sortKeys: Record<string, string> = {};
           filteredByPeriod.forEach((b) => {
             const d = new Date(b.createdAt);
@@ -615,23 +617,80 @@ export default function DashboardPage() {
                 break;
             }
             buckets[key] = (buckets[key] || 0) + 1;
+            if (!bucketBookings[key]) bucketBookings[key] = [];
+            bucketBookings[key].push(b);
             sortKeys[key] = sortKey;
           });
 
           const entries = Object.entries(buckets).sort((a, b) => (sortKeys[a[0]] || "").localeCompare(sortKeys[b[0]] || ""));
           const maxVal = Math.max(...entries.map(([, v]) => v), 1);
 
+          // Detail modal for clicked bar
+          const detailBookings = chartDetailLabel ? (bucketBookings[chartDetailLabel] || []) : [];
+          const agentSummary: Record<string, number> = {};
+          detailBookings.forEach(b => {
+            const name = b.agent?.name || "Kein Agent";
+            agentSummary[name] = (agentSummary[name] || 0) + 1;
+          });
+
           return (
+            <>
+            {/* Chart Detail Modal */}
+            {chartDetailLabel && (
+              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setChartDetailLabel(null)}>
+                <div className="bg-white rounded-2xl shadow-xl max-w-lg w-full mx-4 max-h-[80vh] overflow-hidden" onClick={e => e.stopPropagation()}>
+                  <div className="p-6 border-b border-gray-100">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-lg font-bold text-gray-900">📅 {chartDetailLabel}</h3>
+                      <button onClick={() => setChartDetailLabel(null)} className="text-gray-400 hover:text-gray-600 text-xl">✕</button>
+                    </div>
+                    <p className="text-sm text-gray-500 mt-1">{detailBookings.length} Buchung{detailBookings.length !== 1 ? "en" : ""}</p>
+                  </div>
+                  {/* Agent Summary */}
+                  <div className="px-6 py-4 bg-gray-50 border-b border-gray-100">
+                    <h4 className="text-xs font-semibold text-gray-500 uppercase mb-2">Pro Agent</h4>
+                    <div className="space-y-1.5">
+                      {Object.entries(agentSummary).sort((a, b) => b[1] - a[1]).map(([name, count]) => (
+                        <div key={name} className="flex items-center justify-between">
+                          <span className="text-sm font-medium text-gray-700">{name}</span>
+                          <span className="text-sm font-bold text-blue-600">{count}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  {/* Individual Bookings */}
+                  <div className="overflow-y-auto max-h-[400px] divide-y divide-gray-100">
+                    {detailBookings.map(b => (
+                      <div key={b.id} className="px-6 py-3">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-semibold text-gray-900">{b.lead.firstName} {b.lead.lastName}</p>
+                            <p className="text-xs text-gray-500">{b.lead.email}{b.lead.company ? ` · ${b.lead.company}` : ""}</p>
+                          </div>
+                          <div className="text-right">
+                            <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${stageColors[b.stage || "BOOKED"]}`}>
+                              {stageLabels[b.stage || "BOOKED"]}
+                            </span>
+                            {b.agent && <p className="text-xs text-orange-600 mt-1">{b.agent.name}</p>}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div className="bg-white rounded-xl shadow-sm p-6 mb-8">
               <div className="flex items-center justify-between mb-4">
                 <div>
                   <h2 className="text-lg font-semibold text-gray-900">📞 Calls Created</h2>
-                  <p className="text-sm text-gray-500">Gebuchte Termine im Zeitverlauf</p>
+                  <p className="text-sm text-gray-500">Klicke auf einen Balken für Details</p>
                 </div>
                 <div className="flex items-center gap-3">
                   <div className="flex bg-gray-100 rounded-lg p-0.5">
                     {([["day", "Tag"], ["week", "Woche"], ["month", "Monat"], ["year", "Jahr"]] as const).map(([k, l]) => (
-                      <button key={k} onClick={() => setChartGroupBy(k)}
+                      <button key={k} onClick={() => { setChartGroupBy(k); setChartDetailLabel(null); }}
                         className={`px-2.5 py-1 rounded-md text-xs font-medium transition ${chartGroupBy === k ? "bg-white shadow text-gray-900" : "text-gray-500 hover:text-gray-700"}`}>
                         {l}
                       </button>
@@ -645,7 +704,7 @@ export default function DashboardPage() {
               ) : (
                 <div className="flex items-end gap-1.5" style={{ height: "200px" }}>
                   {entries.map(([label, count]) => (
-                    <div key={label} className="flex-1 flex flex-col items-center justify-end h-full group">
+                    <div key={label} className="flex-1 flex flex-col items-center justify-end h-full group cursor-pointer" onClick={() => setChartDetailLabel(label)}>
                       <span className="text-xs font-bold text-gray-700 mb-1 opacity-0 group-hover:opacity-100 transition">{count}</span>
                       <div
                         className="w-full bg-blue-500 rounded-t-md hover:bg-blue-600 transition min-h-[4px] relative"
@@ -659,6 +718,7 @@ export default function DashboardPage() {
                 </div>
               )}
             </div>
+            </>
           );
         })()}
 
