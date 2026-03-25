@@ -449,6 +449,52 @@ export default function DashboardPage() {
           );
         })()}
 
+        {/* Conversion Funnel */}
+        {(() => {
+          const totalBooked = filteredByPeriod.length;
+          const totalFirstCall = filteredByPeriod.filter(b => b.stage === "FIRST_CALL" || b.stage === "DEMO" || b.stage === "DEAL").length;
+          const totalDemo = filteredByPeriod.filter(b => b.stage === "DEMO" || b.stage === "DEAL").length;
+          const totalDeal = filteredByPeriod.filter(b => b.stage === "DEAL").length;
+          const steps = [
+            { label: "Gebucht", value: totalBooked, color: "bg-blue-500" },
+            { label: "1st Call", value: totalFirstCall, color: "bg-blue-400" },
+            { label: "Demo", value: totalDemo, color: "bg-blue-300" },
+            { label: "Deal", value: totalDeal, color: "bg-green-500" },
+          ];
+          const maxFunnel = Math.max(totalBooked, 1);
+          return (
+            <div className="bg-white rounded-xl shadow-sm p-6 mb-8">
+              <h2 className="text-lg font-semibold text-gray-900 mb-1">Conversion Funnel</h2>
+              <p className="text-sm text-gray-500 mb-5">Vom gebuchten Termin zum Deal</p>
+              <div className="flex items-end gap-4" style={{ height: "180px" }}>
+                {steps.map((step, i) => {
+                  const pct = maxFunnel > 0 ? (step.value / maxFunnel) * 100 : 0;
+                  const convFromPrev = i > 0 && steps[i - 1].value > 0 ? Math.round((step.value / steps[i - 1].value) * 100) : null;
+                  return (
+                    <div key={step.label} className="flex-1 flex flex-col items-center justify-end h-full">
+                      <span className="text-lg font-bold text-gray-900">{step.value}</span>
+                      {convFromPrev !== null && (
+                        <span className={`text-xs font-semibold mb-1 ${convFromPrev >= 50 ? "text-green-600" : convFromPrev >= 30 ? "text-yellow-600" : "text-gray-500"}`}>
+                          {convFromPrev}%
+                        </span>
+                      )}
+                      <div
+                        className={`w-full ${step.color} rounded-t-lg transition-all min-h-[8px]`}
+                        style={{ height: `${Math.max(pct * 1.4, 8)}px` }}
+                      />
+                      <span className="text-xs font-medium text-gray-600 mt-2">{step.label}</span>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="flex justify-between mt-4 pt-3 border-t border-gray-100">
+                <span className="text-xs text-gray-400">Gesamt-Conversion: <span className="font-bold text-gray-700">{totalBooked > 0 ? Math.round((totalDeal / totalBooked) * 100) : 0}%</span></span>
+                <span className="text-xs text-gray-400">Gebucht → Deal</span>
+              </div>
+            </div>
+          );
+        })()}
+
         {/* Company Size + Lead Time Analysis */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
           {/* Company Size Conversion */}
