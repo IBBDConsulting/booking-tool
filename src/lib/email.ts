@@ -121,23 +121,16 @@ export async function sendBookingReminder(
 
   const html = `
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 520px; margin: 0 auto; padding: 32px 16px;">
-      <div style="background: #eff6ff; border-radius: 12px; padding: 20px; text-align: center; margin-bottom: 24px;">
-        <div style="font-size: 36px; margin-bottom: 8px;">&#128276;</div>
-        <h1 style="font-size: 20px; color: #1e40af; margin: 0;">Dein Termin beginnt gleich</h1>
-      </div>
-
-      <p style="color: #374151; font-size: 15px; line-height: 1.6;">
-        Hallo ${lead.firstName},<br><br>
-        dein Termin startet in 30 Minuten.
+      <p style="color: #374151; font-size: 15px; line-height: 1.8;">
+        Guten Tag,<br><br>
+        ich wollte Ihnen nur kurz unseren Termin in 30 Minuten bestätigen. Ich freue mich auf unser Gespräch!
       </p>
 
-      <div style="background: #f9fafb; border-radius: 8px; padding: 16px; margin: 20px 0;">
-        <p style="margin: 0 0 4px; color: #111827; font-size: 15px; font-weight: 600;">${dateFormatted} Uhr</p>
-        <p style="margin: 0; color: #6b7280; font-size: 14px;">Dauer: ${booking.duration} Minuten</p>
-        ${meetLink ? `
-          <a href="${meetLink}" style="display: inline-block; margin-top: 12px; padding: 10px 20px; background: #2563eb; color: white; text-decoration: none; border-radius: 8px; font-size: 14px; font-weight: 600;">Google Meet beitreten</a>
-        ` : ""}
-      </div>
+      ${meetLink ? `
+        <div style="margin: 24px 0;">
+          <a href="${meetLink}" style="display: inline-block; padding: 12px 24px; background: #2563eb; color: white; text-decoration: none; border-radius: 8px; font-size: 14px; font-weight: 600;">Google Meet beitreten</a>
+        </div>
+      ` : ""}
 
       <div style="border-top: 1px solid #e5e7eb; margin-top: 32px; padding-top: 24px;">
         <p style="margin: 0; color: #374151; font-size: 14px;">Schöne Grüße,<br>Dennis Fredrich</p>
@@ -150,6 +143,14 @@ export async function sendBookingReminder(
         </p>
         <p style="margin: 8px 0 0; color: #6b7280; font-size: 12px;">
           Dealcode GmbH | c/o SPACE Hamburg | Am Sandtorkai 27 | 20457 Hamburg
+        </p>
+        <p style="margin: 12px 0 0;">
+          <strong style="color: #111827;">Success in B2B Sales with AI Agents</strong><br>
+          <span style="color: #6b7280;">- learn more at </span><a href="https://dealcode.ai" style="color: #2563eb; text-decoration: none;">dealcode.ai</a>
+        </p>
+        <p style="margin: 8px 0 0; color: #9ca3af; font-size: 11px;">
+          Managing Directors: Alexander Weltzsch, Dennis Hilger<br>
+          Handelsregister: HRB 168195 | Registergericht: Amtsgericht Hamburg | Deutschland
         </p>
       </div>
     </div>
