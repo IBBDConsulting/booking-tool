@@ -34,7 +34,7 @@ function getAvailableDates(workingDays: number[] = [1,2,3,4,5]): Date[] {
   const dates: Date[] = [];
   const today = new Date();
   // Start from tomorrow (i=1), today is always blocked
-  for (let i = 1; i <= 30 && dates.length < 14; i++) {
+  for (let i = 1; i <= 365 && dates.length < 90; i++) {
     const date = new Date(today);
     date.setDate(today.getDate() + i);
     const day = date.getDay();
