@@ -125,6 +125,7 @@ export default function DashboardPage() {
   const [dealValue, setDealValue] = useState("");
   const [chartGroupBy, setChartGroupBy] = useState<"day" | "week" | "month" | "year">("week");
   const [chartDetailLabel, setChartDetailLabel] = useState<string | null>(null);
+  const [timeDetailFilter, setTimeDetailFilter] = useState<{ label: string; hours: number[] } | null>(null);
   const [authenticated, setAuthenticated] = useState(false);
   const [passwordInput, setPasswordInput] = useState("");
   const [passwordError, setPasswordError] = useState(false);
@@ -878,24 +879,42 @@ export default function DashboardPage() {
                 const bestHour = hours.reduce((best, h) => hourStats[h].booked > hourStats[best].booked ? h : best, 8);
 
                 // Vormittag vs Nachmittag
-                const vormittag = hours.filter(h => h < 12).reduce((sum, h) => sum + hourStats[h].booked, 0);
-                const nachmittag = hours.filter(h => h >= 12).reduce((sum, h) => sum + hourStats[h].booked, 0);
-                const vmConv = hours.filter(h => h < 12).reduce((sum, h) => sum + hourStats[h].firstCall, 0);
-                const nmConv = hours.filter(h => h >= 12).reduce((sum, h) => sum + hourStats[h].firstCall, 0);
+                const vmHours = hours.filter(h => h < 12);
+                const nmHours = hours.filter(h => h >= 12);
+                const vormittag = vmHours.reduce((sum, h) => sum + hourStats[h].booked, 0);
+                const nachmittag = nmHours.reduce((sum, h) => sum + hourStats[h].booked, 0);
+                const vmConv = vmHours.reduce((sum, h) => sum + hourStats[h].firstCall, 0);
+                const nmConv = nmHours.reduce((sum, h) => sum + hourStats[h].firstCall, 0);
+
+                // Bookings filtered by time detail
+                const timeDetailBookings = timeDetailFilter
+                  ? filteredByPeriod.filter(b => timeDetailFilter.hours.includes(new Date(b.createdAt).getHours()))
+                  : [];
+                const timeAgentSummary: Record<string, number> = {};
+                timeDetailBookings.forEach(b => {
+                  const name = b.agent?.name || "Kein Agent";
+                  timeAgentSummary[name] = (timeAgentSummary[name] || 0) + 1;
+                });
 
                 return (
                   <>
                     <h3 className="text-sm font-semibold text-gray-700 mb-3">Beste Uhrzeiten für Cold Calling</h3>
-                    {/* Vormittag vs Nachmittag Summary */}
+                    {/* Vormittag vs Nachmittag Summary - clickable */}
                     <div className="grid grid-cols-2 gap-3 mb-4">
-                      <div className={`rounded-lg p-3 text-center ${vormittag >= nachmittag && vormittag > 0 ? "bg-green-50 ring-2 ring-green-500" : "bg-gray-50"}`}>
+                      <div
+                        className={`rounded-lg p-3 text-center cursor-pointer hover:shadow-md transition ${vormittag >= nachmittag && vormittag > 0 ? "bg-green-50 ring-2 ring-green-500" : "bg-gray-50 hover:bg-gray-100"}`}
+                        onClick={() => vormittag > 0 && setTimeDetailFilter({ label: "Vormittag (8–12 Uhr)", hours: vmHours })}
+                      >
                         <div className={`text-xs font-semibold mb-1 ${vormittag >= nachmittag && vormittag > 0 ? "text-green-700" : "text-gray-500"}`}>
                           Vormittag (8–12) {vormittag >= nachmittag && vormittag > 0 && "🏆"}
                         </div>
                         <div className="text-lg font-bold text-gray-900">{vormittag}</div>
                         <div className="text-[10px] text-gray-400">Buchungen · Conv: <span className="font-semibold">{vormittag > 0 ? Math.round((vmConv / vormittag) * 100) : 0}%</span></div>
                       </div>
-                      <div className={`rounded-lg p-3 text-center ${nachmittag > vormittag ? "bg-green-50 ring-2 ring-green-500" : "bg-gray-50"}`}>
+                      <div
+                        className={`rounded-lg p-3 text-center cursor-pointer hover:shadow-md transition ${nachmittag > vormittag ? "bg-green-50 ring-2 ring-green-500" : "bg-gray-50 hover:bg-gray-100"}`}
+                        onClick={() => nachmittag > 0 && setTimeDetailFilter({ label: "Nachmittag (12–18 Uhr)", hours: nmHours })}
+                      >
                         <div className={`text-xs font-semibold mb-1 ${nachmittag > vormittag ? "text-green-700" : "text-gray-500"}`}>
                           Nachmittag (12–18) {nachmittag > vormittag && "🏆"}
                         </div>
@@ -903,7 +922,7 @@ export default function DashboardPage() {
                         <div className="text-[10px] text-gray-400">Buchungen · Conv: <span className="font-semibold">{nachmittag > 0 ? Math.round((nmConv / nachmittag) * 100) : 0}%</span></div>
                       </div>
                     </div>
-                    {/* Stündliche Aufschlüsselung */}
+                    {/* Stündliche Aufschlüsselung - clickable */}
                     <div className="space-y-1.5 mb-6">
                       {hours.map((h) => {
                         const s = hourStats[h];
@@ -917,7 +936,8 @@ export default function DashboardPage() {
                         const pct = Math.round((s.booked / maxHourBooked) * 100);
                         const isBest = h === bestHour;
                         return (
-                          <div key={h} className="flex items-center gap-2">
+                          <div key={h} className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 rounded px-1 -mx-1 transition"
+                            onClick={() => setTimeDetailFilter({ label: `${h}:00 – ${h + 1}:00 Uhr`, hours: [h] })}>
                             <span className={`text-[10px] w-12 text-right ${isBest ? "font-bold text-green-700" : "text-gray-500"}`}>
                               {`${h}:00`}{isBest && " 🏆"}
                             </span>
@@ -929,6 +949,70 @@ export default function DashboardPage() {
                         );
                       })}
                     </div>
+
+                    {/* Time Detail Modal */}
+                    {timeDetailFilter && (
+                      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setTimeDetailFilter(null)}>
+                        <div className="bg-white rounded-2xl shadow-xl max-w-lg w-full mx-4 max-h-[80vh] overflow-hidden" onClick={e => e.stopPropagation()}>
+                          <div className="p-6 border-b border-gray-100">
+                            <div className="flex items-center justify-between">
+                              <h3 className="text-lg font-bold text-gray-900">🕐 {timeDetailFilter.label}</h3>
+                              <button onClick={() => setTimeDetailFilter(null)} className="text-gray-400 hover:text-gray-600 text-xl">✕</button>
+                            </div>
+                            <p className="text-sm text-gray-500 mt-1">{timeDetailBookings.length} Buchung{timeDetailBookings.length !== 1 ? "en" : ""}</p>
+                          </div>
+                          {/* Agent Summary */}
+                          {Object.keys(timeAgentSummary).length > 0 && (
+                            <div className="px-6 py-4 bg-gray-50 border-b border-gray-100">
+                              <h4 className="text-xs font-semibold text-gray-500 uppercase mb-2">Pro Agent</h4>
+                              <div className="space-y-1.5">
+                                {Object.entries(timeAgentSummary).sort((a, b) => b[1] - a[1]).map(([name, count]) => (
+                                  <div key={name} className="flex items-center justify-between">
+                                    <span className="text-sm font-medium text-gray-700">{name}</span>
+                                    <span className="text-sm font-bold text-blue-600">{count}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          {/* Individual Bookings grouped by day */}
+                          <div className="overflow-y-auto max-h-[400px]">
+                            {(() => {
+                              const byDay: Record<string, typeof timeDetailBookings> = {};
+                              timeDetailBookings.forEach(b => {
+                                const dayKey = new Date(b.startTime).toLocaleDateString("de-DE", { weekday: "long", day: "numeric", month: "long" });
+                                if (!byDay[dayKey]) byDay[dayKey] = [];
+                                byDay[dayKey].push(b);
+                              });
+                              return Object.entries(byDay).map(([day, bks]) => (
+                                <div key={day}>
+                                  <div className="px-6 py-2 bg-gray-50 border-y border-gray-100">
+                                    <span className="text-xs font-bold text-gray-600">{day}</span>
+                                    <span className="text-xs text-gray-400 ml-2">({bks.length})</span>
+                                  </div>
+                                  <div className="divide-y divide-gray-50">
+                                    {bks.map(b => (
+                                      <div key={b.id} className="px-6 py-2.5 flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                          <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${stageColors[b.stage || "BOOKED"]}`}>
+                                            {stageLabels[b.stage || "BOOKED"]}
+                                          </span>
+                                          <span className="text-xs text-gray-600">{b.lead.company || `${b.lead.firstName} ${b.lead.lastName}`}</span>
+                                          {b.agent && <span className="text-xs text-orange-600">{b.agent.name}</span>}
+                                        </div>
+                                        <span className="text-xs text-gray-400">
+                                          {new Date(b.createdAt).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })} Uhr
+                                        </span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              ));
+                            })()}
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </>
                 );
               })()}
