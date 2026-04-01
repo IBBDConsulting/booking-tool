@@ -399,7 +399,8 @@ export default function BookingPage({ params }: { params: { slug: string } }) {
                         <option value="1-10">1-10 Mitarbeiter</option>
                         <option value="11-50">11-50 Mitarbeiter</option>
                         <option value="51-200">51-200 Mitarbeiter</option>
-                        <option value="201-1000">201-1.000 Mitarbeiter</option>
+                        <option value="200-500">200-500 Mitarbeiter</option>
+                        <option value="501-1000">501-1.000 Mitarbeiter</option>
                         <option value="1000+">1.000+ Mitarbeiter</option>
                       </select>
                     </div>

@@ -500,7 +500,7 @@ export default function DashboardPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
           {/* Company Size Conversion */}
           {(() => {
-            const sizeOrder = ["1-10", "11-50", "51-200", "201-1000", "1000+"];
+            const sizeOrder = ["1-10", "11-50", "51-200", "200-500", "501-1000", "1000+"];
             const sizeStats: Record<string, { total: number; firstCall: number; demo: number; deal: number }> = {};
             sizeOrder.forEach(s => sizeStats[s] = { total: 0, firstCall: 0, demo: 0, deal: 0 });
             filteredByPeriod.forEach(b => {
@@ -853,6 +853,78 @@ export default function DashboardPage() {
                             <div className="text-[10px] text-gray-500">
                               Conv: <span className={`font-semibold ${convRate >= 70 ? "text-green-600" : convRate >= 40 ? "text-yellow-600" : "text-red-600"}`}>{convRate}%</span>
                             </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </>
+                );
+              })()}
+
+              {/* Uhrzeit-Analyse */}
+              {filteredByPeriod.length > 0 && (() => {
+                const hourStats: { [key: number]: { booked: number; firstCall: number } } = {};
+                for (let i = 0; i < 24; i++) hourStats[i] = { booked: 0, firstCall: 0 };
+
+                filteredByPeriod.forEach((b) => {
+                  const hour = new Date(b.createdAt).getHours();
+                  hourStats[hour].booked++;
+                  if (b.stage === "FIRST_CALL" || b.stage === "DEMO" || b.stage === "DEAL") hourStats[hour].firstCall++;
+                });
+
+                // Business hours 8-18
+                const hours = Array.from({ length: 11 }, (_, i) => i + 8);
+                const maxHourBooked = Math.max(...hours.map(h => hourStats[h].booked), 1);
+                const bestHour = hours.reduce((best, h) => hourStats[h].booked > hourStats[best].booked ? h : best, 8);
+
+                // Vormittag vs Nachmittag
+                const vormittag = hours.filter(h => h < 12).reduce((sum, h) => sum + hourStats[h].booked, 0);
+                const nachmittag = hours.filter(h => h >= 12).reduce((sum, h) => sum + hourStats[h].booked, 0);
+                const vmConv = hours.filter(h => h < 12).reduce((sum, h) => sum + hourStats[h].firstCall, 0);
+                const nmConv = hours.filter(h => h >= 12).reduce((sum, h) => sum + hourStats[h].firstCall, 0);
+
+                return (
+                  <>
+                    <h3 className="text-sm font-semibold text-gray-700 mb-3">Beste Uhrzeiten für Cold Calling</h3>
+                    {/* Vormittag vs Nachmittag Summary */}
+                    <div className="grid grid-cols-2 gap-3 mb-4">
+                      <div className={`rounded-lg p-3 text-center ${vormittag >= nachmittag && vormittag > 0 ? "bg-green-50 ring-2 ring-green-500" : "bg-gray-50"}`}>
+                        <div className={`text-xs font-semibold mb-1 ${vormittag >= nachmittag && vormittag > 0 ? "text-green-700" : "text-gray-500"}`}>
+                          Vormittag (8–12) {vormittag >= nachmittag && vormittag > 0 && "🏆"}
+                        </div>
+                        <div className="text-lg font-bold text-gray-900">{vormittag}</div>
+                        <div className="text-[10px] text-gray-400">Buchungen · Conv: <span className="font-semibold">{vormittag > 0 ? Math.round((vmConv / vormittag) * 100) : 0}%</span></div>
+                      </div>
+                      <div className={`rounded-lg p-3 text-center ${nachmittag > vormittag ? "bg-green-50 ring-2 ring-green-500" : "bg-gray-50"}`}>
+                        <div className={`text-xs font-semibold mb-1 ${nachmittag > vormittag ? "text-green-700" : "text-gray-500"}`}>
+                          Nachmittag (12–18) {nachmittag > vormittag && "🏆"}
+                        </div>
+                        <div className="text-lg font-bold text-gray-900">{nachmittag}</div>
+                        <div className="text-[10px] text-gray-400">Buchungen · Conv: <span className="font-semibold">{nachmittag > 0 ? Math.round((nmConv / nachmittag) * 100) : 0}%</span></div>
+                      </div>
+                    </div>
+                    {/* Stündliche Aufschlüsselung */}
+                    <div className="space-y-1.5 mb-6">
+                      {hours.map((h) => {
+                        const s = hourStats[h];
+                        if (s.booked === 0) return (
+                          <div key={h} className="flex items-center gap-2">
+                            <span className="text-[10px] text-gray-400 w-12 text-right">{`${h}:00`}</span>
+                            <div className="flex-1 bg-gray-100 rounded-full h-1.5" />
+                            <span className="text-[10px] text-gray-300 w-6 text-right">0</span>
+                          </div>
+                        );
+                        const pct = Math.round((s.booked / maxHourBooked) * 100);
+                        const isBest = h === bestHour;
+                        return (
+                          <div key={h} className="flex items-center gap-2">
+                            <span className={`text-[10px] w-12 text-right ${isBest ? "font-bold text-green-700" : "text-gray-500"}`}>
+                              {`${h}:00`}{isBest && " 🏆"}
+                            </span>
+                            <div className="flex-1 bg-gray-100 rounded-full h-1.5">
+                              <div className={`h-1.5 rounded-full ${isBest ? "bg-green-500" : "bg-blue-400"}`} style={{ width: `${pct}%` }} />
+                            </div>
+                            <span className={`text-[10px] w-6 text-right ${isBest ? "font-bold text-green-700" : "text-gray-600"}`}>{s.booked}</span>
                           </div>
                         );
                       })}
