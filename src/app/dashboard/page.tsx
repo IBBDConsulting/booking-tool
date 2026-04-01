@@ -127,8 +127,7 @@ export default function DashboardPage() {
   const [chartDetailLabel, setChartDetailLabel] = useState<string | null>(null);
   const [timeDetailFilter, setTimeDetailFilter] = useState<{ label: string; hours: number[] } | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
+  const [dateFilter, setDateFilter] = useState<string>("all");
   const [authenticated, setAuthenticated] = useState(false);
   const [passwordInput, setPasswordInput] = useState("");
   const [passwordError, setPasswordError] = useState(false);
@@ -275,15 +274,17 @@ export default function DashboardPage() {
       ].filter(Boolean).join(" ").toLowerCase();
       if (!searchFields.includes(q)) return false;
     }
-    if (dateFrom) {
-      const from = new Date(dateFrom);
-      from.setHours(0, 0, 0, 0);
-      if (new Date(b.startTime) < from) return false;
-    }
-    if (dateTo) {
-      const to = new Date(dateTo);
-      to.setHours(23, 59, 59, 999);
-      if (new Date(b.startTime) > to) return false;
+    if (dateFilter !== "all") {
+      const now = new Date();
+      const start = new Date(b.startTime);
+      if (dateFilter === "upcoming-7") { if (start < now || start > new Date(now.getTime() + 7 * 86400000)) return false; }
+      else if (dateFilter === "upcoming-30") { if (start < now || start > new Date(now.getTime() + 30 * 86400000)) return false; }
+      else if (dateFilter === "upcoming") { if (start < now) return false; }
+      else if (dateFilter === "past-7") { if (start > now || start < new Date(now.getTime() - 7 * 86400000)) return false; }
+      else if (dateFilter === "past-30") { if (start > now || start < new Date(now.getTime() - 30 * 86400000)) return false; }
+      else if (dateFilter === "past") { if (start > now) return false; }
+      else if (dateFilter === "today") { const t = new Date(); t.setHours(0,0,0,0); const te = new Date(); te.setHours(23,59,59,999); if (start < t || start > te) return false; }
+      else if (dateFilter === "this-week") { const mon = new Date(now); mon.setDate(now.getDate() - ((now.getDay() + 6) % 7)); mon.setHours(0,0,0,0); const sun = new Date(mon); sun.setDate(mon.getDate() + 6); sun.setHours(23,59,59,999); if (start < mon || start > sun) return false; }
     }
     return true;
   });
@@ -1191,19 +1192,20 @@ export default function DashboardPage() {
                 </button>
               )}
             </div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-gray-400 whitespace-nowrap">Von:</span>
-              <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)}
-                className="px-2 py-2 rounded-lg border border-gray-200 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none" />
-              <span className="text-xs text-gray-400 whitespace-nowrap">Bis:</span>
-              <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)}
-                className="px-2 py-2 rounded-lg border border-gray-200 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none" />
-              {(dateFrom || dateTo) && (
-                <button onClick={() => { setDateFrom(""); setDateTo(""); }} className="text-xs text-gray-400 hover:text-gray-600 whitespace-nowrap">
-                  ✕
-                </button>
-              )}
-            </div>
+            <select value={dateFilter} onChange={(e) => setDateFilter(e.target.value)}
+              className="px-3 py-2 rounded-lg border border-gray-200 text-sm bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none">
+              <option value="all">Alle Termine</option>
+              <option disabled>── Kommende ──</option>
+              <option value="today">Heute</option>
+              <option value="this-week">Diese Woche</option>
+              <option value="upcoming-7">Nächste 7 Tage</option>
+              <option value="upcoming-30">Nächste 30 Tage</option>
+              <option value="upcoming">Alle kommenden</option>
+              <option disabled>── Vergangene ──</option>
+              <option value="past-7">Letzte 7 Tage</option>
+              <option value="past-30">Letzte 30 Tage</option>
+              <option value="past">Alle vergangenen</option>
+            </select>
           </div>
         </div>
 
