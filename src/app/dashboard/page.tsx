@@ -1325,7 +1325,7 @@ export default function DashboardPage() {
                       <div className="flex flex-wrap gap-2">
                         {booking.status === "SCHEDULED" && (
                           <>
-                            <button onClick={() => { updateBooking(booking.id, { status: "ATTENDED" }); setOutcomeFlow({ bookingId: booking.id, step: "outcome" }); }}
+                            <button onClick={() => updateBooking(booking.id, { status: "ATTENDED", stage: "FIRST_CALL" })}
                               disabled={updatingId === booking.id}
                               className="px-3 py-1.5 rounded-lg text-xs font-medium bg-green-50 text-green-700 hover:bg-green-100 border border-green-200 transition disabled:opacity-50">
                               Teilgenommen
