@@ -126,6 +126,7 @@ export default function DashboardPage() {
   const [chartGroupBy, setChartGroupBy] = useState<"day" | "week" | "month" | "year">("week");
   const [chartDetailLabel, setChartDetailLabel] = useState<string | null>(null);
   const [timeDetailFilter, setTimeDetailFilter] = useState<{ label: string; hours: number[] } | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
   const [authenticated, setAuthenticated] = useState(false);
   const [passwordInput, setPasswordInput] = useState("");
   const [passwordError, setPasswordError] = useState(false);
@@ -264,6 +265,14 @@ export default function DashboardPage() {
     if (filter !== "ALL" && b.status !== filter) return false;
     if (agentFilter !== "ALL" && b.agent?.name !== agentFilter) return false;
     if (memberFilter !== "ALL" && b.member?.googleCalendarId !== memberFilter) return false;
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      const searchFields = [
+        b.lead.firstName, b.lead.lastName, b.lead.email,
+        b.lead.company, b.lead.role, b.agent?.name, b.notes,
+      ].filter(Boolean).join(" ").toLowerCase();
+      if (!searchFields.includes(q)) return false;
+    }
     return true;
   });
 
@@ -1150,6 +1159,26 @@ export default function DashboardPage() {
                 {name} ({bookings.filter((b) => b.agent?.name === name).length})
               </button>
             ))}
+          </div>
+          {/* Search */}
+          <div className="mt-3 pt-3 border-t border-gray-100">
+            <div className="relative">
+              <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Name, Firma, E-Mail, Agent suchen..."
+                className="w-full pl-10 pr-8 py-2 rounded-lg border border-gray-200 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
+              />
+              {searchQuery && (
+                <button onClick={() => setSearchQuery("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                  ✕
+                </button>
+              )}
+            </div>
           </div>
         </div>
 
