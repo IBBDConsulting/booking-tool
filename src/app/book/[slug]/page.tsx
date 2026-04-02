@@ -88,6 +88,8 @@ export default function BookingPage({ params }: { params: { slug: string } }) {
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [workingDays, setWorkingDays] = useState<number[]>([1,2,3,4,5]);
+  const [monthAvailability, setMonthAvailability] = useState<Set<string>>(new Set());
+  const [loadingMonth, setLoadingMonth] = useState(false);
 
   const availableDates = getAvailableDates(workingDays);
   const today = new Date();
@@ -115,6 +117,21 @@ export default function BookingPage({ params }: { params: { slug: string } }) {
       })
       .catch(console.error);
   }, []);
+
+  // Fetch which days in the current month have available slots
+  useEffect(() => {
+    if (!selectedPage) return;
+    setLoadingMonth(true);
+    const monthStr = `${currentMonth.getFullYear()}-${String(currentMonth.getMonth() + 1).padStart(2, "0")}`;
+    fetch(`/api/availability/month?slug=${selectedPage.slug}&month=${monthStr}`)
+      .then(r => r.json())
+      .then(data => {
+        if (data.success) setMonthAvailability(new Set(data.availableDates));
+        else setMonthAvailability(new Set());
+      })
+      .catch(() => setMonthAvailability(new Set()))
+      .finally(() => setLoadingMonth(false));
+  }, [selectedPage, currentMonth]);
 
   const fetchAvailability = useCallback(async (date: Date) => {
     if (!selectedPage) return;
@@ -171,7 +188,8 @@ export default function BookingPage({ params }: { params: { slug: string } }) {
   };
 
   const isDateAvailable = (date: Date): boolean => {
-    return availableDates.some((d) => d.toDateString() === date.toDateString());
+    const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+    return monthAvailability.has(dateStr);
   };
 
   const calendarDays = getCalendarDays(currentMonth.getFullYear(), currentMonth.getMonth());
