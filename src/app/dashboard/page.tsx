@@ -368,6 +368,41 @@ export default function DashboardPage() {
           ))}
         </div>
 
+        {/* Top Caller Leaderboard */}
+        {(() => {
+          const callerStats: Record<string, number> = {};
+          filteredByPeriod.forEach((b) => {
+            const name = b.agent?.name || "Ohne Agent";
+            callerStats[name] = (callerStats[name] || 0) + 1;
+          });
+          const sorted = Object.entries(callerStats).sort((a, b) => b[1] - a[1]);
+          const maxCount = sorted.length > 0 ? sorted[0][1] : 1;
+          if (sorted.length === 0) return null;
+          return (
+            <div className="bg-white rounded-xl shadow-sm p-5 mb-6">
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">Top Caller</h2>
+              <div className="space-y-3">
+                {sorted.map(([name, count], i) => (
+                  <div key={name} className="flex items-center gap-3">
+                    <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${i === 0 ? "bg-yellow-100 text-yellow-700" : i === 1 ? "bg-gray-100 text-gray-600" : i === 2 ? "bg-orange-100 text-orange-700" : "bg-gray-50 text-gray-400"}`}>
+                      {i + 1}
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className={`text-sm font-medium ${i === 0 ? "text-gray-900" : "text-gray-700"}`}>{name}</span>
+                        <span className="text-sm font-bold text-gray-900">{count} {count === 1 ? "Termin" : "Termine"}</span>
+                      </div>
+                      <div className="w-full bg-gray-100 rounded-full h-2">
+                        <div className={`h-2 rounded-full transition-all ${i === 0 ? "bg-yellow-400" : i === 1 ? "bg-gray-400" : i === 2 ? "bg-orange-400" : "bg-blue-300"}`} style={{ width: `${(count / maxCount) * 100}%` }} />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })()}
+
         {/* KPI Cards */}
         {(() => {
           const showUpRate = (attended + noShow) > 0 ? Math.round((attended / (attended + noShow)) * 100) : 0;
